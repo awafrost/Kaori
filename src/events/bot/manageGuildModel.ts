@@ -1,6 +1,5 @@
-import { Guild as DiscordGuild, TextChannel, EmbedBuilder } from 'discord.js';
+import { Guild as DiscordGuild, TextChannel, EmbedBuilder, Events } from 'discord.js';
 import { DiscordEventBuilder } from '@modules/events';
-import { Events } from 'discord.js';
 
 // ID du salon où les logs seront envoyés
 const LOG_CHANNEL_ID = '1256686169282838640';
@@ -34,8 +33,8 @@ async function sendLogEmbed(guild: DiscordGuild, action: 'added' | 'removed') {
     .setFooter({ text: 'Bot Logs' });
 
   // Vérification et récupération du salon
-  const logChannel = await guild.client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
-  if (!logChannel || !(logChannel instanceof TextChannel)) {
+  const channel = await guild.client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
+  if (!channel || !channel.isTextBased()) {
     console.warn(
       `Log channel not found or invalid. Please check LOG_CHANNEL_ID: ${LOG_CHANNEL_ID}`
     );
@@ -43,7 +42,7 @@ async function sendLogEmbed(guild: DiscordGuild, action: 'added' | 'removed') {
   }
 
   // Envoi de l'embed dans le salon
-  await logChannel.send({ embeds: [embed] }).catch((err) => {
+  await (channel as TextChannel).send({ embeds: [embed] }).catch((err) => {
     console.error(`Failed to send log embed for guild ${guild.id}: ${err}`);
   });
 }
