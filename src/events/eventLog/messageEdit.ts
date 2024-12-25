@@ -7,7 +7,7 @@ import { Colors, EmbedBuilder, Events } from 'discord.js';
 export default new DiscordEventBuilder({
   type: Events.MessageUpdate,
   async execute(oldMessage, { content, attachments }) {
-    if (!oldMessage.inGuild()) return;
+    if (!oldMessage.inGuild() || oldMessage.author.bot) return; // Check if the message author is a bot
     const { messageEdit: setting } =
       (await EventLogConfig.findOne({ guildId: oldMessage.guild.id })) ?? {};
     if (!(setting?.enabled && setting.channel)) return;
@@ -46,6 +46,6 @@ export default new DiscordEventBuilder({
       oldMessage.attachments.difference(attachments),
     );
     if (attachment) channel.send({ embeds: [embed], files: [attachment] });
-    if (contentChanged) channel.send({ embeds: [embed] });
+    if (contentChanged && !attachment) channel.send({ embeds: [embed] });
   },
 });

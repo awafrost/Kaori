@@ -7,6 +7,9 @@ import {
   Colors,
   EmbedBuilder,
   Events,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
   type GuildAuditLogsEntry,
   inlineCode,
 } from 'discord.js';
@@ -36,29 +39,44 @@ export default new DiscordEventBuilder({
       },
     );
     if (!channel) return;
-    channel.send({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(`${inlineCode('🔨')} BAN${isCancel ? ' Removal' : ''}`)
-          .setDescription(
-            [
-              userField(target, { label: 'Target' }),
-              '',
-              userField(await executor.fetch(), {
-                label: 'Executor',
-                color: 'blurple',
-              }),
-              textField(reason ?? 'No reason provided', {
-                label: 'Reason',
-                color: 'blurple',
-              }),
-            ].join('\n'),
-          )
-          .setColor(isCancel ? Colors.Blue : Colors.Red)
-          .setThumbnail(target.displayAvatarURL())
-          .setTimestamp(),
-      ],
-    });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${inlineCode('🔨')} BAN${isCancel ? ' Removal' : ''}`)
+      .setDescription(
+        [
+          userField(target, { label: 'Target' }),
+          '',
+          userField(await executor.fetch(), {
+            label: 'Executor',
+            color: 'blurple',
+          }),
+          textField(reason ?? 'No reason provided', {
+            label: 'Reason',
+            color: 'blurple',
+          }),
+        ].join('\n'),
+      )
+      .setColor(isCancel ? Colors.Blue : Colors.Red)
+      .setThumbnail(target.displayAvatarURL())
+      .setTimestamp();
+
+    // Only add the unban button if it's a ban event (not an unban event)
+    if (!isCancel) {
+      const unbanButton = new ButtonBuilder()
+        .setCustomId(`unban_${target.id}`) // Store the user's ID in the custom ID
+        .setLabel('Débannir')
+        .setStyle(ButtonStyle.Success);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(unbanButton);
+
+      await channel.send({
+        embeds: [embed],
+        components: [row],
+      });
+    } else {
+      // If it's an unban event, just send the embed without the button
+      await channel.send({ embeds: [embed] });
+    }
   },
 });
 

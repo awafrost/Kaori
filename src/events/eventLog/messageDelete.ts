@@ -19,7 +19,7 @@ const lastLogs = new Collection<
 export default new DiscordEventBuilder({
   type: Events.MessageDelete,
   async execute(message) {
-    if (!message.inGuild()) return;
+    if (!message.inGuild() || message.author.bot) return; // Check if the message author is a bot
     const log = await getAuditLog(message);
     const executor = await log?.executor?.fetch().catch(() => null);
     const beforeMsg = await message.channel.messages
@@ -66,8 +66,11 @@ export default new DiscordEventBuilder({
       });
     }
     const attachment = await createAttachment(message.attachments);
-    if (attachment) channel.send({ embeds: [embed], files: [attachment] });
-    channel.send({ embeds: [embed] });
+    if (attachment) {
+      channel.send({ embeds: [embed], files: [attachment] });
+    } else {
+      channel.send({ embeds: [embed] });
+    }
   },
 });
 

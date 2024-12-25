@@ -1,6 +1,6 @@
 import { AutoCreateThreadConfig } from '@models';
 import { DiscordEventBuilder } from '@modules/events';
-import { Events, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, PermissionFlagsBits } from 'discord.js';
+import { Events, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, PermissionFlagsBits, PermissionsBitField } from 'discord.js';
 
 export default new DiscordEventBuilder({
   type: Events.MessageCreate,
@@ -25,11 +25,19 @@ export default new DiscordEventBuilder({
       reason: 'auto thread create',
     });
 
-    // Créer l'embed pour le thread
+    // Créer l'embed pour le thread avec des règles de vie
     const embed = new EmbedBuilder()
       .setTitle('Thread Information')
       .setDescription(`Thread créé par ${message.author.tag}`)
-      .setColor('Blue');
+      .addFields(
+        { name: 'Règles de Vie', value: 
+          '1. Soyez respectueux.\n' +
+          '2. Évitez le spam.\n' +
+          '3. Ne partagez pas de contenu inapproprié.\n' +
+          '4. Respectez la confidentialité des autres.'
+        }
+      )
+      .setColor('#FFD1DC'); // Set the color to pastel pink
 
     // Créer un bouton pour supprimer le thread et le message original
     const deleteButton = new ButtonBuilder()
@@ -44,22 +52,27 @@ export default new DiscordEventBuilder({
 
     // Ajouter un listener pour le bouton de suppression
     const collector = thread.createMessageComponentCollector({ 
-      filter: (i) => i.customId === 'delete_thread_and_message' && i.member.permissions.has(PermissionFlagsBits.Administrator),
+      filter: (i) => i.customId === 'delete_thread_and_message',
     });
 
     collector.on('collect', async (interaction) => {
-      try {
-        // Supprimer le message original
-        await message.delete();
+      if (interaction.member?.permissions instanceof PermissionsBitField && interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+        try {
+          // Supprimer le message original
+          await message.delete();
 
-        // Supprimer le thread
-        await thread.delete('Thread et message original supprimés par un administrateur');
+          // Supprimer le thread
+          await thread.delete('Thread et message original supprimés par un administrateur');
 
-        // Répondre à l'interaction
-        await interaction.reply({ content: 'Le thread et le message ont été supprimés.', ephemeral: true });
-      } catch (error) {
-        console.error('Erreur lors de la suppression du thread et du message:', error);
-        await interaction.reply({ content: 'Impossible de supprimer le thread ou le message.', ephemeral: true });
+          // Répondre à l'interaction
+          await interaction.reply({ content: 'Le thread et le message ont été supprimés.', ephemeral: true });
+        } catch (error) {
+          console.error('Erreur lors de la suppression du thread et du message:', error);
+          await interaction.reply({ content: 'Impossible de supprimer le thread ou le message.', ephemeral: true });
+        }
+      } else {
+        // Si l'utilisateur n'est pas admin, envoyer un message éphémère
+        await interaction.reply({ content: 'Vous n\'avez pas la permission de faire cela.', ephemeral: true });
       }
     });
   },
