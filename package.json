@@ -1,5 +1,5 @@
 {
-  "name": "nonick.js",
+  "name": "kaori",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -13,10 +13,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/nonick-mc/DiscordBot-NoNICK.js/issues"
-  },
-  "homepage": "https://github.com/nonick-mc/DiscordBot-NoNICK.js#readme",
+  
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@swc/core": "^1.7.42",

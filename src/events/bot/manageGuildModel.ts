@@ -1,50 +1,38 @@
-import { Guild as DiscordGuild, TextChannel, EmbedBuilder, Events } from 'discord.js';
+import { Guild } from '@models';
 import { DiscordEventBuilder } from '@modules/events';
+import { Events } from 'discord.js';
 
-// ID du salon où les logs seront envoyés
-const LOG_CHANNEL_ID = '1256686169282838640';
+const GuildCache = new Set<string>();
 
-// Gestion des événements GuildCreate et GuildDelete
 const onGuildCreate = new DiscordEventBuilder({
   type: Events.GuildCreate,
-  async execute(guild: DiscordGuild) {
-    await sendLogEmbed(guild, 'added');
+  async execute(guild) {
+    createGuild(guild.id);
+  },
+});
+
+const onMessageCreate = new DiscordEventBuilder({
+  type: Events.MessageCreate,
+  async execute(message) {
+    if (!message.inGuild()) return;
+    createGuild(message.guild.id);
   },
 });
 
 const onGuildDelete = new DiscordEventBuilder({
   type: Events.GuildDelete,
-  async execute(guild: DiscordGuild) {
-    await sendLogEmbed(guild, 'removed');
+  async execute(guild) {
+    Guild.deleteOne({ guildId: guild.id }).then(() =>
+      GuildCache.delete(guild.id),
+    );
   },
 });
 
-// Fonction pour envoyer un embed dans le salon de logs
-async function sendLogEmbed(guild: DiscordGuild, action: 'added' | 'removed') {
-  const timestamp = new Date();
-  const embed = new EmbedBuilder()
-    .setTitle(`Bot ${action === 'added' ? 'Added' : 'Removed'}`)
-    .setColor(action === 'added' ? 0x00ff00 : 0xff0000)
-    .addFields(
-      { name: 'Server Name', value: guild.name, inline: true },
-      { name: 'Server ID', value: guild.id, inline: true },
-      { name: 'Time', value: `<t:${Math.floor(timestamp.getTime() / 1000)}:F>`, inline: false }
-    )
-    .setFooter({ text: 'Bot Logs' });
+async function createGuild(guildId: string) {
+  if (GuildCache.has(guildId) || (await Guild.findOne({ guildId }))) return;
 
-  // Vérification et récupération du salon
-  const channel = await guild.client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
-  if (!channel || !channel.isTextBased()) {
-    console.warn(
-      `Log channel not found or invalid. Please check LOG_CHANNEL_ID: ${LOG_CHANNEL_ID}`
-    );
-    return;
-  }
-
-  // Envoi de l'embed dans le salon
-  await (channel as TextChannel).send({ embeds: [embed] }).catch((err) => {
-    console.error(`Failed to send log embed for guild ${guild.id}: ${err}`);
-  });
+  const res = await Guild.create({ guildId });
+  res.save().then(() => GuildCache.add(guildId));
 }
 
-export default [onGuildCreate, onGuildDelete];
+export default [onGuildCreate, onMessageCreate, onGuildDelete];
