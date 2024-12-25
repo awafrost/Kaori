@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { ApplicationCommandOptionType, EmbedBuilder } from 'discord.js';
+import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
 
 export default new ChatInput(
   {
@@ -10,12 +10,13 @@ export default new ChatInput(
         name: 'user',
         description: 'User to view banner of',
         type: ApplicationCommandOptionType.User,
-        required: true,
+        required: false,
       },
     ],
   },
   async (interaction) => {
-    const user = await interaction.options.getUser('user', true).fetch();
+    // If no user is specified, use the interaction's user
+    const user = await (interaction.options.getUser('user') || interaction.user).fetch();
 
     const bannerURL = user.bannerURL({ size: 1024 });
     if (!bannerURL) {
@@ -25,7 +26,7 @@ export default new ChatInput(
     const embed = new EmbedBuilder()
       .setTitle(`${user.tag}'s Banner`)
       .setImage(bannerURL)
-      .setColor('Random');
+      .setColor(Colors.Blurple);
 
     interaction.reply({ embeds: [embed] });
   },

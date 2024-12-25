@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { ApplicationCommandOptionType, EmbedBuilder } from 'discord.js';
+import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
 
 export default new ChatInput(
   {
@@ -10,21 +10,19 @@ export default new ChatInput(
         name: 'user',
         description: 'User to view avatar of',
         type: ApplicationCommandOptionType.User,
-        required: true,
+        required: false,
       },
     ],
   },
   (interaction) => {
-    const user = interaction.options.getUser('user');
-    if (!user) {
-      return interaction.reply({ content: 'User not found', ephemeral: true });
-    }
+    // If no user is specified, use the interaction's user
+    const user = interaction.options.getUser('user') || interaction.user;
 
     const embed = new EmbedBuilder()
       .setTitle(`${user.tag}'s Avatar`)
       .setImage(user.displayAvatarURL({ size: 1024 }))
-      .setColor('Random');
+      .setColor(Colors.Blurple);
 
     interaction.reply({ embeds: [embed] });
   },
-);
+)
