@@ -1,5 +1,7 @@
 import { ChatInput } from '@akki256/discord-interaction';
 import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
+
+// Assurez-vous que fetch est importé correctement pour ESM
 import fetch from 'node-fetch';
 
 // Définissons une interface pour la structure de la réponse de l'API Jikan
