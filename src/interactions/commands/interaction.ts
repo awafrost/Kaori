@@ -1,12 +1,12 @@
 import { ChatInput } from '@akki256/discord-interaction';
 import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
-
-// Assurez-vous que fetch est importé correctement pour ESM
-import fetch from 'node-fetch';
+import axios from 'axios';
 
 // Définissons une interface pour la structure de la réponse de l'API Jikan
 interface JikanResponse {
-  data: Anime[];
+  data: {
+    data: Anime[];
+  };
 }
 
 // Définissons une interface pour la structure d'un anime
@@ -50,11 +50,13 @@ export default new ChatInput(
     try {
       // Encodage de l'anime name pour l'URL
       const encodedAnimeName = encodeURIComponent(animeName);
-      // Appel à l'API Jikan pour rechercher l'anime
-      const response = await fetch(`https://api.jikan.moe/v4/anime?q=${encodedAnimeName}&limit=1`);
-      const data = await response.json() as JikanResponse;
+      // Appel à l'API Jikan pour rechercher l'anime avec Axios
+      const response = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodedAnimeName}&limit=1`);
+      
+      // Axios place la réponse dans response.data, donc nous devons ajuster notre structure de données
+      const data = response.data as JikanResponse;
 
-      if (!data || !data.data || data.data.length === 0) {
+      if (!data.data || !data.data.data || data.data.data.length === 0) {
         return interaction.reply({
           content: `Désolé, je n'ai trouvé aucun anime correspondant à "${animeName}".`,
           ephemeral: true,
@@ -62,7 +64,7 @@ export default new ChatInput(
       }
 
       // Prend le premier résultat de la recherche
-      const anime = data.data[0];
+      const anime = data.data.data[0];
 
       // Construit et envoie l'embed avec les informations de l'anime
       const embed = new EmbedBuilder()
