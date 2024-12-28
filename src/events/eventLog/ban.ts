@@ -12,6 +12,8 @@ import {
   ActionRowBuilder,
   type GuildAuditLogsEntry,
   inlineCode,
+  InteractionType,
+  PermissionFlagsBits,
 } from 'discord.js';
 
 const state = [
@@ -60,7 +62,6 @@ export default new DiscordEventBuilder({
       .setThumbnail(target.displayAvatarURL())
       .setTimestamp();
 
-    // Only add the unban button if it's a ban event (not an unban event)
     if (!isCancel) {
       const unbanButton = new ButtonBuilder()
         .setCustomId(`unban_${target.id}`) // Store the user's ID in the custom ID
@@ -74,7 +75,6 @@ export default new DiscordEventBuilder({
         components: [row],
       });
     } else {
-      // If it's an unban event, just send the embed without the button
       await channel.send({ embeds: [embed] });
     }
   },
@@ -85,3 +85,39 @@ function isBanLog(
 ): entry is GuildAuditLogsEntry<(typeof state)[number]> {
   return (state as unknown as AuditLogEvent[]).includes(entry.action);
 }
+
+// New event listener for button interactions
+export const interactionCreate = new DiscordEventBuilder({
+  type: Events.InteractionCreate,
+  async execute(interaction) {
+    if (interaction.type !== InteractionType.MessageComponent) return;
+    if (!interaction.isButton()) return;
+
+    const [command, userId] = interaction.customId.split('_');
+
+    if (command === 'unban') {
+      try {
+        // Check if the user has permissions to unban
+        if (!interaction.guildId || !interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
+          await interaction.reply({ content: 'You do not have permission to unban users.', ephemeral: true });
+          return;
+        }
+
+        // Check if interaction is within a guild
+        if (!interaction.guildId || !interaction.guild) {
+          await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+          return;
+        }
+
+        // Unban the user
+        await interaction.guild.members.unban(userId, `Unbanned by ${interaction.user.tag}`);
+        await interaction.reply({ content: `User ${userId} has been unbanned.`, ephemeral: true });
+
+        // Optionally, you might want to log this action or update the message to show that the user was unbanned
+      } catch (error) {
+        console.error('Failed to unban user:', error);
+        await interaction.reply({ content: 'There was an error unbanning this user.', ephemeral: true });
+      }
+    }
+  },
+});
