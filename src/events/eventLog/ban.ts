@@ -46,14 +46,14 @@ export default new DiscordEventBuilder({
       .setTitle(`${inlineCode('🔨')} BAN${isCancel ? ' Removal' : ''}`)
       .setDescription(
         [
-          userField(target, { label: 'Target' }),
+          userField(target, { label: 'Cible' }),
           '',
           userField(await executor.fetch(), {
-            label: 'Executor',
+            label: 'Exécuteur',
             color: 'blurple',
           }),
-          textField(reason ?? 'No reason provided', {
-            label: 'Reason',
+          textField(reason ?? 'Aucune raison fournie', {
+            label: 'Raison',
             color: 'blurple',
           }),
         ].join('\n'),
@@ -64,7 +64,7 @@ export default new DiscordEventBuilder({
 
     if (!isCancel) {
       const unbanButton = new ButtonBuilder()
-        .setCustomId(`unban_${target.id}`) // Store the user's ID in the custom ID
+        .setCustomId(`unban_${target.id}`) // Stocke l'ID de l'utilisateur dans le custom ID
         .setLabel('Débannir')
         .setStyle(ButtonStyle.Success);
 
@@ -86,7 +86,7 @@ function isBanLog(
   return (state as unknown as AuditLogEvent[]).includes(entry.action);
 }
 
-// New event listener for button interactions
+// Nouveau gestionnaire d'événements pour les interactions avec les boutons
 export const interactionCreate = new DiscordEventBuilder({
   type: Events.InteractionCreate,
   async execute(interaction) {
@@ -97,26 +97,26 @@ export const interactionCreate = new DiscordEventBuilder({
 
     if (command === 'unban') {
       try {
-        // Check if the user has permissions to unban
+        // Vérification des permissions pour débannir
         if (!interaction.guildId || !interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
-          await interaction.reply({ content: 'You do not have permission to unban users.', ephemeral: true });
+          await interaction.reply({ content: 'Vous n\'avez pas la permission de débannir des utilisateurs.', ephemeral: true });
           return;
         }
 
-        // Check if interaction is within a guild
+        // Vérification que l'interaction est bien dans un serveur
         if (!interaction.guildId || !interaction.guild) {
-          await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+          await interaction.reply({ content: 'Cette commande ne peut être utilisée que dans un serveur.', ephemeral: true });
           return;
         }
 
-        // Unban the user
-        await interaction.guild.members.unban(userId, `Unbanned by ${interaction.user.tag}`);
-        await interaction.reply({ content: `User ${userId} has been unbanned.`, ephemeral: true });
+        // Débannir l'utilisateur
+        await interaction.guild.members.unban(userId, `Débanni par ${interaction.user.tag}`);
+        await interaction.reply({ content: `L'utilisateur ${userId} a été débanni.`, ephemeral: true });
 
-        // Optionally, you might want to log this action or update the message to show that the user was unbanned
+        // Optionnellement, vous pourriez vouloir logger cette action ou mettre à jour le message pour indiquer que l'utilisateur a été débanni
       } catch (error) {
-        console.error('Failed to unban user:', error);
-        await interaction.reply({ content: 'There was an error unbanning this user.', ephemeral: true });
+        console.error('Échec du débannissement de l\'utilisateur:', error);
+        await interaction.reply({ content: 'Il y a eu une erreur lors du débannissement de cet utilisateur.', ephemeral: true });
       }
     }
   },

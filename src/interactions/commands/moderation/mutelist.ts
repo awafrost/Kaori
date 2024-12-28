@@ -113,8 +113,13 @@ export const interactionCreateHandler = {
         return;
       }
 
-      await member.timeout(null, `Unmuted by ${interaction.user.tag}`).catch(console.error);
-      await interaction.update({ content: `Successfully unmuted ${member.user.tag}.`, components: [] });
+      try {
+        await member.timeout(null, `Unmuted by ${interaction.user.tag}`);
+        await interaction.update({ content: `Successfully unmuted ${member.user.tag}.`, components: [] });
+      } catch (error) {
+        console.error('Failed to unmute user:', error);
+        await interaction.update({ content: `Error unmuting ${member.user.tag}.`, components: [] });
+      }
     }
   }
 };
