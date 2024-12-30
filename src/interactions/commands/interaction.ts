@@ -1,24 +1,6 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import {
-  ApplicationCommandOptionType,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonInteraction,
-  ButtonStyle,
-  AttachmentBuilder,
-  Events,
-  ChatInputCommandInteraction,
-} from 'discord.js';
+import { ApplicationCommandOptionType, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
 import axios from 'axios';
-import fs from 'fs';
-
-// Interface for nekos.best response structure
-interface NekosBestResponse {
-  results: {
-    anime_name: string;
-    url: string;
-  }[];
-}
 
 export default new ChatInput(
   {
@@ -46,48 +28,43 @@ export default new ChatInput(
     defaultMemberPermissions: null,
     dmPermission: true,
   },
-  async (interaction: ChatInputCommandInteraction) => {
+  async (interaction) => {
     const interactionType = interaction.options.getString('type', true);
     const targetUser = interaction.options.getUser('cible', true);
 
     try {
-      const response = await axios.get<NekosBestResponse>(`https://nekos.best/api/v2/${interactionType}`);
-      
+      const response = await axios.get(`https://nekos.best/api/v2/${interactionType}`);
       if (response.data.results.length === 0) {
         return interaction.reply({ content: 'Aucune image disponible pour cette interaction.', ephemeral: true });
       }
 
       const imageUrl = response.data.results[0].url;
-      const fileName = `${interactionType}.gif`;
-
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      fs.writeFileSync(fileName, imageResponse.data);
 
       let actionText;
       switch (interactionType) {
         case 'hug':
-          actionText = `${interaction.user} a fait un câlin à ${targetUser}`;
+          actionText = `${interaction.user} a fait un câlin à ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         case 'kiss':
-          actionText = `${interaction.user} a embrassé ${targetUser}`;
+          actionText = `${interaction.user} a embrassé ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         case 'slap':
-          actionText = `${interaction.user} a giflé ${targetUser}`;
+          actionText = `${interaction.user} a giflé ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         default:
           return interaction.reply({ content: 'Type d\'interaction non supporté.', ephemeral: true });
       }
 
-      const attachment = new AttachmentBuilder(fileName);
+      // Création d'un bouton lien
       const button = new ButtonBuilder()
-        .setCustomId(`return_${interactionType}_${interaction.user.id}_${targetUser.id}`)
-        .setLabel('Retourner l\'interaction')
-        .setStyle(ButtonStyle.Secondary);
+        .setLabel('Télécharger l\'image')
+        .setStyle(ButtonStyle.Link)
+        .setURL(imageUrl);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-      await interaction.reply({ content: actionText, files: [attachment], components: [row], fetchReply: true });
-      fs.unlinkSync(fileName);
+      // Réponse avec le bouton lien
+      await interaction.reply({ content: actionText, components: [row] });
 
     } catch (error) {
       console.error(`Erreur lors de l'interaction de type ${interactionType}:`, error);
@@ -98,62 +75,3 @@ export default new ChatInput(
     }
   }
 );
-
-export const interactionCreateHandler = {
-  name: 'returnInteraction',
-  event: Events.InteractionCreate,
-  async execute(interaction: ButtonInteraction) {
-    if (!interaction.isButton()) return;
-
-    const customId = interaction.customId;
-    if (!customId.startsWith('return_')) return;
-
-    const [, interactionType, originalUserId, originalTargetId] = customId.split('_');
-
-    if (interaction.user.id !== originalTargetId) {
-      await interaction.reply({ content: 'Seul le destinataire original peut retourner cette interaction.', ephemeral: true });
-      return;
-    }
-
-    try {
-      const response = await axios.get<NekosBestResponse>(`https://nekos.best/api/v2/${interactionType}`);
-      
-      if (response.data.results.length === 0) {
-        await interaction.reply({ content: 'Aucune image disponible pour cette interaction.', ephemeral: true });
-        return;
-      }
-
-      const imageUrl = response.data.results[0].url;
-      const fileName = `${interactionType}.gif`;
-
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      fs.writeFileSync(fileName, imageResponse.data);
-
-      let actionText;
-      switch (interactionType) {
-        case 'hug':
-          actionText = `${interaction.user} a fait un câlin à <@${originalUserId}>`;
-          break;
-        case 'kiss':
-          actionText = `${interaction.user} a embrassé <@${originalUserId}>`;
-          break;
-        case 'slap':
-          actionText = `${interaction.user} a giflé <@${originalUserId}>`;
-          break;
-        default:
-          await interaction.reply({ content: 'Type d\'interaction non supporté.', ephemeral: true });
-          return;
-      }
-
-      const attachment = new AttachmentBuilder(fileName);
-      await interaction.channel?.send({ content: actionText, files: [attachment] });
-      await interaction.update({ components: [] });
-
-      fs.unlinkSync(fileName);
-
-    } catch (error) {
-      console.error(`Erreur lors du retour de l'interaction de type ${interactionType}:`, error);
-      await interaction.reply({ content: 'Une erreur est survenue lors du retour de l\'interaction.', ephemeral: true });
-    }
-  },
-};
