@@ -1,43 +1,32 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
+import { ApplicationCommandOptionType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import axios from 'axios';
 
-// Définissons une interface pour la structure de la réponse de l'API Jikan
-interface JikanResponse {
-  data: {
-    data: Anime[];
-  };
-}
-
-// Définissons une interface pour la structure d'un anime
-interface Anime {
-  title: string;
-  synopsis?: string;
-  images: {
-    jpg: {
-      image_url: string;
-    };
-  };
-  episodes?: number;
-  score?: number;
-  status?: string;
-  genres: Genre[];
-}
-
-// Définissons une interface pour la structure des données de genre
-interface Genre {
-  name: string;
+// Interface for nekos.best response structure
+interface NekosBestResponse {
+  url: string;
 }
 
 export default new ChatInput(
   {
-    name: 'anime',
-    description: 'Recherchez des informations sur un anime spécifique',
+    name: 'interaction',
+    description: 'Perform an interaction with another user',
     options: [
       {
-        name: 'nom',
-        description: 'Le nom de l\'anime à rechercher',
+        name: 'type',
+        description: 'Type of interaction (hug, kiss, slap)',
         type: ApplicationCommandOptionType.String,
+        required: true,
+        choices: [
+          { name: 'Hug', value: 'hug' },
+          { name: 'Kiss', value: 'kiss' },
+          { name: 'Slap', value: 'slap' }
+        ],
+      },
+      {
+        name: 'target',
+        description: 'The user to interact with',
+        type: ApplicationCommandOptionType.User,
         required: true,
       },
     ],
@@ -45,51 +34,52 @@ export default new ChatInput(
     dmPermission: true,
   },
   async (interaction) => {
-    const animeName = interaction.options.getString('nom', true);
+    const interactionType = interaction.options.getString('type', true);
+    const targetUser = interaction.options.getUser('target', true);
 
     try {
-      // Encodage de l'anime name pour l'URL
-      const encodedAnimeName = encodeURIComponent(animeName);
-      // Appel à l'API Jikan pour rechercher l'anime avec Axios
-      const response = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodedAnimeName}&limit=1`);
-      
-      // Axios place la réponse dans response.data, donc nous devons ajuster notre structure de données
-      const data = response.data as JikanResponse;
+      // Fetch the corresponding image from nekos.best
+      const response = await axios.get<NekosBestResponse>(`https://nekos.best/api/v2/${interactionType}`);
+      const imageUrl = response.data.url;
 
-      if (!data.data || !data.data.data || data.data.data.length === 0) {
-        return interaction.reply({
-          content: `Désolé, je n'ai trouvé aucun anime correspondant à "${animeName}".`,
-          ephemeral: true,
-        });
+      let actionText;
+      switch(interactionType) {
+        case 'hug':
+          actionText = `${interaction.user.username} hugged ${targetUser.username} <:zrougelovii:1260653164487770193>`
+          break;
+        case 'kiss':
+          actionText = `${interaction.user.username} kissed ${targetUser.username} <:zrougelovii:1260653164487770193>`;
+          break;
+        case 'slap':
+          actionText = `${interaction.user.username} slapped ${targetUser.username} <:zrougelovii:1260653164487770193>`;
+          break;
+        default:
+          return interaction.reply({ content: 'Unsupported interaction type.', ephemeral: true });
       }
 
-      // Prend le premier résultat de la recherche
-      const anime = data.data.data[0];
-
-      // Construit et envoie l'embed avec les informations de l'anime
+      // Create the embed for the interaction
       const embed = new EmbedBuilder()
-        .setTitle(anime.title)
         .setColor(Colors.Blue)
-        .setDescription(anime.synopsis ? anime.synopsis.substring(0, 2000) : 'Pas de synopsis disponible.')
-        .setThumbnail(anime.images.jpg.image_url)
-        .addFields(
-          { name: 'Épisodes', value: anime.episodes?.toString() || 'Inconnu', inline: true },
-          { name: 'Score', value: anime.score?.toString() || 'Inconnu', inline: true },
-          { name: 'Statut', value: anime.status || 'Inconnu', inline: true },
-          { 
-            name: 'Genres', 
-            value: anime.genres.map((genre: Genre) => genre.name).join(', ') || 'Inconnu' 
-          },
-        )
-        .setFooter({ text: 'Powered by Jikan API' });
+        .setDescription(actionText)
+        .setImage(imageUrl);
 
-      await interaction.reply({ embeds: [embed] });
+      // Create the button to return the action
+      const button = new ButtonBuilder()
+        .setCustomId(`return_${interactionType}_${interaction.user.id}_${targetUser.id}`)
+        .setLabel('Return Interaction')
+        .setStyle(ButtonStyle.Primary);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
+
+      await interaction.reply({ embeds: [embed], components: [row] });
     } catch (error) {
-      console.error(`Erreur lors de la recherche de l'anime ${animeName}:`, error);
+      console.error(`Error during ${interactionType} interaction:`, error);
       await interaction.reply({
-        content: 'Une erreur est survenue lors de la recherche de l\'anime.',
+        content: 'An error occurred during the interaction.',
         ephemeral: true,
       });
     }
-  },
+  }
 );
+
+// You also need to add a handler for the interaction return button

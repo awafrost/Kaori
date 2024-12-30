@@ -59,19 +59,18 @@ export default new ChatInput(
   },
 );
 
-// Here, we assume you have a way to register this event outside of ChatInput, maybe in your main bot file or event handler
+// Register interaction handler within the same file
 export const interactionCreateHandler = {
   name: 'mutelistInteraction',
-  event: Events.InteractionCreate,
-  async execute(interaction: ButtonInteraction<CacheType> | StringSelectMenuInteraction<CacheType>) {
+  execute: async (interaction: ButtonInteraction<CacheType> | StringSelectMenuInteraction<CacheType>) => {
     if (interaction.type !== InteractionType.MessageComponent) return;
 
     if (interaction.isButton() && interaction.customId === 'unmuteMenu') {
-      const now = Date.now();
       if (!interaction.guild) {
         await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
         return;
       }
+      const now = Date.now();
       const mutedMembers = interaction.guild.members.cache.filter(
         (member: GuildMember) => member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > now,
       );
@@ -118,7 +117,7 @@ export const interactionCreateHandler = {
         await interaction.update({ content: `Successfully unmuted ${member.user.tag}.`, components: [] });
       } catch (error) {
         console.error('Failed to unmute user:', error);
-        await interaction.update({ content: `Error unmuting ${member.user.tag}.`, components: [] });
+        await interaction.update({ content: `Error unmuting ${member.user.tag}. Please check bot permissions.`, components: [] });
       }
     }
   }

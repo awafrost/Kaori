@@ -1,6 +1,14 @@
 import { AutoCreateThreadConfig } from '@models';
 import { DiscordEventBuilder } from '@modules/events';
-import { Events, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, PermissionFlagsBits, PermissionsBitField } from 'discord.js';
+import { Events, ButtonBuilder, ButtonStyle, ActionRowBuilder, PermissionFlagsBits, PermissionsBitField } from 'discord.js';
+
+const compliments = [
+  "C'est magnifique !",
+  "Superbe travail !",
+  "Incroyablement bien fait !",
+  "Tu déchires !",
+  "Quel talent !",
+];
 
 export default new DiscordEventBuilder({
   type: Events.MessageCreate,
@@ -25,51 +33,86 @@ export default new DiscordEventBuilder({
       reason: 'auto thread create',
     });
 
-    // Créer l'embed pour le thread avec des règles de vie
-    const embed = new EmbedBuilder()
-      .setTitle('Thread Information')
-      .setDescription(`Thread créé par ${message.author.tag}`)
-      .addFields(
-        { name: 'Règles de Vie', value: 
-          '1. Soyez respectueux.\n' +
-          '2. Évitez le spam.\n' +
-          '3. Ne partagez pas de contenu inapproprié.\n' +
-          '4. Respectez la confidentialité des autres.'
-        }
-      )
-      .setColor('#FFD1DC'); // Set the color to pastel pink
+    // Random compliment
+    const randomCompliment = compliments[Math.floor(Math.random() * compliments.length)];
 
     // Créer un bouton pour supprimer le thread et le message original
     const deleteButton = new ButtonBuilder()
-      .setCustomId('delete_thread_and_message')
-      .setLabel('Supprimer le Thread et le Message')
+      .setCustomId('confirm_delete')
+      .setLabel('Supprimer')
+      .setEmoji('1282880442332352602')
       .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteButton);
+    // Ajouter un bouton pour inviter le bot
+    const inviteButton = new ButtonBuilder()
+      .setURL('https://discord.com/oauth2/authorize?client_id=855107430693077033') // Remplacez par le lien d'invitation de votre bot
+      .setLabel('Inviter')
+      .setEmoji('1323284326778933279')
+      .setStyle(ButtonStyle.Link);
 
-    // Envoyer l'embed et le bouton dans le thread
-    await thread.send({ embeds: [embed], components: [row] });
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteButton, inviteButton);
+
+    // Envoyer le message avec compliment et les boutons dans le thread
+    await thread.send({ content: randomCompliment, components: [row] });
 
     // Ajouter un listener pour le bouton de suppression
     const collector = thread.createMessageComponentCollector({ 
-      filter: (i) => i.customId === 'delete_thread_and_message',
+      filter: (i) => i.customId === 'confirm_delete',
     });
 
     collector.on('collect', async (interaction) => {
       if (interaction.member?.permissions instanceof PermissionsBitField && interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-        try {
-          // Supprimer le message original
-          await message.delete();
+        // Création des boutons de confirmation
+        const confirmYes = new ButtonBuilder()
+          .setCustomId('confirm_yes')
+          .setLabel('Oui')
+          .setStyle(ButtonStyle.Success);
 
-          // Supprimer le thread
-          await thread.delete('Thread et message original supprimés par un administrateur');
+        const confirmNo = new ButtonBuilder()
+          .setCustomId('confirm_no')
+          .setLabel('Non')
+          .setStyle(ButtonStyle.Danger);
 
-          // Répondre à l'interaction
-          await interaction.reply({ content: 'Le thread et le message ont été supprimés.', ephemeral: true });
-        } catch (error) {
-          console.error('Erreur lors de la suppression du thread et du message:', error);
-          await interaction.reply({ content: 'Impossible de supprimer le thread ou le message.', ephemeral: true });
-        }
+        const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmYes, confirmNo);
+
+        await interaction.reply({ 
+          content: 'Êtes-vous sûr de vouloir supprimer le thread et le message original ?', 
+          components: [confirmRow], 
+          ephemeral: true 
+        });
+
+        // Ajouter un listener pour la confirmation
+        const confirmCollector = interaction.channel?.createMessageComponentCollector({
+          filter: (i) => i.customId === 'confirm_yes' || i.customId === 'confirm_no',
+          time: 15000,  // Cette collecte expire après 15 secondes
+          max: 1       // Une seule interaction est nécessaire
+        });
+
+        confirmCollector?.on('collect', async (confirmInteraction) => {
+          if (confirmInteraction.customId === 'confirm_yes') {
+            try {
+              // Supprimer le message original
+              await message.delete();
+
+              // Supprimer le thread
+              await thread.delete('Thread et message original supprimés par un administrateur');
+
+              // Répondre à l'interaction
+              await confirmInteraction.update({ content: 'Le thread et le message ont été supprimés.', components: [] });
+            } catch (error) {
+              console.error('Erreur lors de la suppression du thread et du message:', error);
+              await confirmInteraction.update({ content: 'Impossible de supprimer le thread ou le message.', components: [] });
+            }
+          } else {
+            await confirmInteraction.update({ content: 'Action annulée.', components: [] });
+          }
+        });
+
+        confirmCollector?.on('end', collected => {
+          if (collected.size === 0) {
+            interaction.editReply({ content: 'Temps écoulé, action annulée.', components: [] });
+          }
+        });
       } else {
         // Si l'utilisateur n'est pas admin, envoyer un message éphémère
         await interaction.reply({ content: 'Vous n\'avez pas la permission de faire cela.', ephemeral: true });

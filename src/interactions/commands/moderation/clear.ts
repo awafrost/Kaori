@@ -39,6 +39,18 @@ export default new ChatInput(
         description: 'User to filter messages from (if "from" is "member")',
         type: ApplicationCommandOptionType.User,
       },
+      {
+        name: 'type',
+        description: 'Type of content to delete',
+        type: ApplicationCommandOptionType.String,
+        choices: [
+          { name: 'All', value: 'all' },
+          { name: 'Images', value: 'image' },
+          { name: 'Videos', value: 'video' },
+          { name: 'Embeds', value: 'embed' },
+          { name: 'Text Only', value: 'text' },
+        ],
+      },
     ],
     dmPermission: false,
     defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
@@ -58,11 +70,13 @@ export default new ChatInput(
     const bulkCount = interaction.options.getInteger('count', true);
     const from = interaction.options.getString('from') || 'all';
     const user = interaction.options.getUser('user');
+    const type = interaction.options.getString('type') || 'all';
 
     try {
       let messagesToDelete;
       const messages = await interaction.channel.messages.fetch({ limit: bulkCount });
 
+      // Filter messages based on 'from' option
       switch (from) {
         case 'member':
           if (!user) {
@@ -80,6 +94,23 @@ export default new ChatInput(
           messagesToDelete = messages;
       }
 
+      // Further filter based on content type
+      switch (type) {
+        case 'image':
+          messagesToDelete = messagesToDelete.filter(msg => msg.attachments.size > 0 && msg.attachments.some(a => a.contentType && a.contentType.startsWith('image/')));
+          break;
+        case 'video':
+          messagesToDelete = messagesToDelete.filter(msg => msg.attachments.size > 0 && msg.attachments.some(a => a.contentType && a.contentType.startsWith('video/')));
+          break;
+        case 'embed':
+          messagesToDelete = messagesToDelete.filter(msg => msg.embeds.length > 0);
+          break;
+        case 'text':
+          messagesToDelete = messagesToDelete.filter(msg => msg.content && !msg.attachments.size && msg.embeds.length === 0);
+          break;
+        // Default case 'all' doesn't require additional filtering
+      }
+
       const deleted = await interaction.channel.bulkDelete(messagesToDelete, true);
       interaction.reply({
         embeds: [
@@ -92,7 +123,6 @@ export default new ChatInput(
         ephemeral: true,
       });
     } catch (err) {
-      // Convert 'err' to string to avoid the TypeScript error
       const errorMessage = (err instanceof Error) ? err.message : String(err);
       
       interaction.reply({
