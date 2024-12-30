@@ -1,10 +1,14 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { ApplicationCommandOptionType, EmbedBuilder, Colors, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ApplicationCommandOptionType, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
 import axios from 'axios';
+import fs from 'fs';
 
 // Interface for nekos.best response structure
 interface NekosBestResponse {
-  url: string;
+  results: {
+    anime_name: string;
+    url: string;
+  }[];
 }
 
 export default new ChatInput(
@@ -38,30 +42,36 @@ export default new ChatInput(
     const targetUser = interaction.options.getUser('target', true);
 
     try {
-      // Fetch the corresponding image from nekos.best
       const response = await axios.get<NekosBestResponse>(`https://nekos.best/api/v2/${interactionType}`);
-      const imageUrl = response.data.url;
+      
+      if (response.data.results.length === 0) {
+        return interaction.reply({ content: 'No image available for this interaction.', ephemeral: true });
+      }
+
+      const imageUrl = response.data.results[0].url;
+      const fileName = `${interactionType}.gif`;  // Naming the file based on interaction type
+
+      // Download the image
+      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      fs.writeFileSync(fileName, imageResponse.data);
 
       let actionText;
       switch(interactionType) {
         case 'hug':
-          actionText = `${interaction.user.username} hugged ${targetUser.username} <:zrougelovii:1260653164487770193>`
+          actionText = `${interaction.user} hugged ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         case 'kiss':
-          actionText = `${interaction.user.username} kissed ${targetUser.username} <:zrougelovii:1260653164487770193>`;
+          actionText = `${interaction.user} kissed ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         case 'slap':
-          actionText = `${interaction.user.username} slapped ${targetUser.username} <:zrougelovii:1260653164487770193>`;
+          actionText = `${interaction.user} slapped ${targetUser} <:zrougelovii:1260653164487770193>`;
           break;
         default:
           return interaction.reply({ content: 'Unsupported interaction type.', ephemeral: true });
       }
 
-      // Create the embed for the interaction
-      const embed = new EmbedBuilder()
-        .setColor(Colors.Blue)
-        .setDescription(actionText)
-        .setImage(imageUrl);
+      // Create an attachment from the saved file
+      const attachment = new AttachmentBuilder(fileName);
 
       // Create the button to return the action
       const button = new ButtonBuilder()
@@ -71,7 +81,12 @@ export default new ChatInput(
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-      await interaction.reply({ embeds: [embed], components: [row] });
+      // Reply with the content, attachment, and button
+      await interaction.reply({ content: actionText, files: [attachment], components: [row] });
+
+      // Clean up: Remove the temporary file after sending
+      fs.unlinkSync(fileName); // Optional, to delete the file after sending
+
     } catch (error) {
       console.error(`Error during ${interactionType} interaction:`, error);
       await interaction.reply({
