@@ -1,6 +1,7 @@
 import { ChatInput } from '@akki256/discord-interaction';
 import { ApplicationCommandOptionType, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
 import axios from 'axios';
+import fs from 'fs';
 
 export default new ChatInput(
   {
@@ -39,6 +40,11 @@ export default new ChatInput(
       }
 
       const imageUrl = response.data.results[0].url;
+      const fileName = `${interactionType}-${Date.now()}.gif`;
+
+      // Télécharger l'image
+      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      fs.writeFileSync(fileName, imageResponse.data);
 
       let actionText;
       switch (interactionType) {
@@ -55,7 +61,10 @@ export default new ChatInput(
           return interaction.reply({ content: 'Type d\'interaction non supporté.', ephemeral: true });
       }
 
-      // Création d'un bouton lien
+      // Créer un fichier à partir de l'image téléchargée
+      const attachment = new AttachmentBuilder(fileName);
+
+      // Ajouter un bouton lien pour télécharger directement l'image
       const button = new ButtonBuilder()
         .setLabel('Télécharger l\'image')
         .setStyle(ButtonStyle.Link)
@@ -63,8 +72,11 @@ export default new ChatInput(
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-      // Réponse avec le bouton lien
-      await interaction.reply({ content: actionText, components: [row] });
+      // Répondre avec le texte, l'image et le bouton
+      await interaction.reply({ content: actionText, files: [attachment], components: [row] });
+
+      // Nettoyer : supprimer le fichier temporaire
+      fs.unlinkSync(fileName);
 
     } catch (error) {
       console.error(`Erreur lors de l'interaction de type ${interactionType}:`, error);
