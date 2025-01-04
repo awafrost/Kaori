@@ -13,6 +13,11 @@ const joinMessageSchema = new Schema<z.infer<typeof zodSchema>>({
   enabled: Schema.Types.Boolean,
   ignoreBot: Schema.Types.Boolean,
   message: messageOptionSchema,
+  // Ajout des nouveaux champs pour la personnalisation de l'embed
+  embedColor: { type: Schema.Types.String, default: 'Random' },
+  embedTitle: { type: Schema.Types.String, default: 'Bienvenue !' },
+  textMessage: { type: Schema.Types.String, default: '' },
+  imageUrl: { type: Schema.Types.String, default: '' },
 });
 
 export default models?.joinMessageConfig
