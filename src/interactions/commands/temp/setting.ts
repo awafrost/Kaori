@@ -12,7 +12,7 @@ import {
 export default new ChatInput(
   {
     name: 'setting',
-    description: 'Change the bot settings',
+    description: 'Modifier les paramètres du bot',
     dmPermission: false,
     defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
   },
@@ -22,16 +22,16 @@ export default new ChatInput(
     return interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setTitle('Bot settings have moved to the dashboard')
+          .setTitle('Les paramètres du bot ont été déplacés vers le tableau de bord')
           .setDescription(
-            `Kaori settings can now be configured via the [**Web Dashboard**](${dashboard})! This command will be removed in the next version and will no longer be available.`,
+            `Les paramètres de Kaori peuvent désormais être configurés via le [**Tableau de bord web**](${dashboard}) ! Cette commande sera supprimée dans la prochaine version et ne sera plus disponible.`,
           )
           .setColor(Colors.Blurple),
       ],
       components: [
         new ActionRowBuilder<ButtonBuilder>().setComponents([
           new ButtonBuilder()
-            .setLabel('Dashboard')
+            .setLabel('Tableau de bord')
             .setURL(`${dashboard}/guilds/${interaction.guild.id}`)
             .setStyle(ButtonStyle.Link),
         ]),
