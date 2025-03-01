@@ -9,7 +9,6 @@ import {
   Colors,
   EmbedBuilder,
   Events,
-  type ButtonInteraction,
 } from 'discord.js';
 
 export default new DiscordEventBuilder({
@@ -53,7 +52,7 @@ export default new DiscordEventBuilder({
 
     // Ajout du bouton "Supprimer le message"
     const deleteButton = new ButtonBuilder()
-      .setCustomId(`delete_${oldMessage.id}`)
+      .setCustomId(`delete_${oldMessage.id}`) // Identifiant unique avec l'ID du message
       .setLabel('Supprimer le message')
       .setStyle(ButtonStyle.Danger);
 
@@ -65,43 +64,6 @@ export default new DiscordEventBuilder({
       await channel.send({ embeds: [embed], files: [attachment], components: [row] });
     } else {
       await channel.send({ embeds: [embed], components: [row] });
-    }
-  },
-});
-
-// Gestionnaire d'interaction pour le bouton de suppression
-export const interactionCreate = new DiscordEventBuilder({
-  type: Events.InteractionCreate,
-  async execute(interaction) {
-    if (!interaction.isButton()) return;
-
-    const [action, messageId] = interaction.customId.split('_');
-
-    if (action === 'delete') {
-      if (!interaction.guild) {
-        await interaction.reply({ content: '🚫 Impossible de supprimer le message en dehors d\'un serveur.', ephemeral: true });
-        return;
-      }
-
-      try {
-        const channel = interaction.channel;
-        if (!channel || !channel.isTextBased()) {
-          await interaction.reply({ content: '❌ Impossible de trouver le message.', ephemeral: true });
-          return;
-        }
-
-        const message = await channel.messages.fetch(messageId).catch(() => null);
-        if (!message) {
-          await interaction.reply({ content: '❌ Message introuvable ou déjà supprimé.', ephemeral: true });
-          return;
-        }
-
-        await message.delete();
-        await interaction.reply({ content: '✅ Message supprimé avec succès.', ephemeral: true });
-      } catch (error) {
-        console.error('Erreur lors de la suppression du message:', error);
-        await interaction.reply({ content: '❌ Une erreur est survenue lors de la suppression du message.', ephemeral: true });
-      }
     }
   },
 });
