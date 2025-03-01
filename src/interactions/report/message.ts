@@ -22,7 +22,7 @@ import {
 
 const messageContext = new MessageContext(
   {
-    name: 'Report Message',
+    name: 'Signaler le message',
     dmPermission: false,
   },
   async (interaction) => {
@@ -35,12 +35,12 @@ const messageContext = new MessageContext(
     if (!setting?.channel) {
       if (interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
         return interaction.reply({
-          content: `\`❌\` To use this feature, set up a report receiving channel via the dashboard: ${hyperlink('Set a channel', `<${dashboard}/guilds/${interaction.guild.id}/report>`)}`,
+          content: `\`❌\` Pour utiliser cette fonctionnalité, configurez un salon de réception des signalements via le tableau de bord : ${hyperlink('Définir un salon', `<${dashboard}/guilds/${interaction.guild.id}/report>`)}`,
           ephemeral: true,
         });
       }
       return interaction.reply({
-        content: '`❌` This feature is not currently available. Please contact a server admin.',
+        content: '`❌` Cette fonctionnalité n’est pas disponible actuellement. Veuillez contacter un administrateur du serveur.',
         ephemeral: true,
       });
     }
@@ -50,20 +50,20 @@ const messageContext = new MessageContext(
 
     if (user.system || message.webhookId) {
       return interaction.reply({
-        content: '`❌` You cannot report system messages or webhook messages.',
+        content: '`❌` Vous ne pouvez pas signaler les messages système ou les messages de webhook.',
         ephemeral: true,
       });
     }
 
     if (user.equals(interaction.user)) {
       return interaction.reply({
-        content: '`❌` You cannot report yourself.',
+        content: '`❌` Vous ne pouvez pas vous signaler vous-même.',
         ephemeral: true,
       });
     }
     if (user.equals(interaction.client.user)) {
       return interaction.reply({
-        content: `\`❌\` You cannot report ${interaction.client.user.username}.`,
+        content: `\`❌\` Vous ne pouvez pas signaler ${interaction.client.user.username}.`,
         ephemeral: true,
       });
     }
@@ -71,14 +71,14 @@ const messageContext = new MessageContext(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:messageReportModal')
-        .setTitle('Report Message')
+        .setTitle('Signaler un message')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId(interaction.targetId)
-              .setLabel('Details')
+              .setLabel('Détails')
               .setPlaceholder(
-                'Your report will only be visible to admins.',
+                'Votre signalement ne sera visible que par les administrateurs.',
               )
               .setMaxLength(1500)
               .setStyle(TextInputStyle.Paragraph),
@@ -100,7 +100,7 @@ const messageReportModal = new Modal(
     });
     if (!setting?.channel) {
       return interaction.reply({
-        content: '`❌` An error occurred while submitting your report.',
+        content: '`❌` Une erreur est survenue lors de l’envoi de votre signalement.',
         ephemeral: true,
       });
     }
@@ -115,13 +115,13 @@ const messageReportModal = new Modal(
     if (!(message instanceof Message)) {
       return interaction.reply({
         content:
-          '`❌` The message you tried to report was deleted or is inaccessible by the bot.',
+          '`❌` Le message que vous avez essayé de signaler a été supprimé ou est inaccessible au bot.',
         ephemeral: true,
       });
     }
     if (!channel?.isTextBased()) {
       return interaction.reply({
-        content: '`❌` An error occurred while submitting your report.',
+        content: '`❌` Une erreur est survenue lors de l’envoi de votre signalement.',
         ephemeral: true,
       });
     }
@@ -133,21 +133,21 @@ const messageReportModal = new Modal(
           : undefined,
         embeds: [
           new EmbedBuilder()
-            .setTitle('`📢` Message Report')
+            .setTitle('`📢` Signalement de message')
             .setDescription(
               [
-                userField(message.author, { label: 'Sender' }),
-                `${formatEmoji(gray.channel)} **Message:** ${message.url}`,
+                userField(message.author, { label: 'Expéditeur' }),
+                `${formatEmoji(gray.channel)} **Message :** ${message.url}`,
                 countField(message.attachments.size, {
                   emoji: 'link',
                   color: 'gray',
-                  label: 'Attached Files',
+                  label: 'Fichiers joints',
                 }),
-                scheduleField(message.createdAt, { label: 'Sent At' }),
+                scheduleField(message.createdAt, { label: 'Envoyé le' }),
                 '',
                 userField(interaction.user, {
                   color: 'blurple',
-                  label: 'Reporter',
+                  label: 'Signaleur',
                 }),
               ].join('\n'),
             )
@@ -155,11 +155,11 @@ const messageReportModal = new Modal(
             .setThumbnail(message.author.displayAvatarURL())
             .setFields(
               {
-                name: 'Message Content',
-                value: escapeSpoiler(message.content || 'None'),
+                name: 'Contenu du message',
+                value: escapeSpoiler(message.content || 'Aucun'),
               },
               {
-                name: 'Reason',
+                name: 'Raison',
                 value: interaction.components[0].components[0].value,
               },
             ),
@@ -168,23 +168,23 @@ const messageReportModal = new Modal(
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:report-consider')
-              .setLabel('Take Action')
+              .setLabel('Prendre des mesures')
               .setStyle(ButtonStyle.Primary),
           ),
         ],
       })
       .then((msg) => {
         interaction.reply({
-          content: '`✅` **Thank you for your report!** It has been sent to the server admins.',
+          content: '`✅` **Merci pour votre signalement !** Il a été envoyé aux administrateurs du serveur.',
           ephemeral: true,
         });
         msg
-          .startThread({ name: `Report for ${message.author.username}` })
+          .startThread({ name: `Signalement pour ${message.author.username}` })
           .catch(() => {});
       })
       .catch(() =>
         interaction.reply({
-          content: '`❌` An error occurred while submitting your report.',
+          content: '`❌` Une erreur est survenue lors de l’envoi de votre signalement.',
           ephemeral: true,
         }),
       );

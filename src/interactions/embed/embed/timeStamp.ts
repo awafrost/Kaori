@@ -14,13 +14,13 @@ const button = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-timeStampModal')
-        .setTitle('Timestamp')
+        .setTitle('Horodatage')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('timeStamp')
-              .setLabel('YYYY-MM-DDThh:mm:ss+timezone (Use "now" for current time)')
-              .setPlaceholder('e.g., 2023-10-17T10:17:00+09:00')
+              .setLabel('AAAA-MM-JJThh:mm:ss+fuseau (Utilisez "now" pour l’heure actuelle)')
+              .setPlaceholder('ex. : 2023-10-17T10:17:00+09:00')
               .setValue(interaction.message.embeds[0].timestamp || '')
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -46,7 +46,7 @@ const modal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` Invalid timestamp! Please enter a valid value that conforms to [ISO8601](https://en.wikipedia.org/wiki/ISO_8601).',
+          '`❌` Horodatage invalide ! Veuillez entrer une valeur valide conforme à [ISO8601](https://fr.wikipedia.org/wiki/ISO_8601).',
         ephemeral: true,
       });
 

@@ -18,13 +18,13 @@ const selectEditButton = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:emberMaker-selectRole-placeholderModal')
-        .setTitle('Edit Select Menu')
+        .setTitle('Modifier le menu déroulant')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('placeholder')
-              .setLabel('Select Menu Placeholder')
-              .setPlaceholder('Text shown when nothing is selected')
+              .setLabel('Texte indicatif du menu déroulant')
+              .setPlaceholder('Texte affiché quand rien n’est sélectionné')
               .setValue(select.placeholder ?? '')
               .setMaxLength(20)
               .setStyle(TextInputStyle.Short)

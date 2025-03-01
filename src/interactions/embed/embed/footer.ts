@@ -17,12 +17,12 @@ const button = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-footerModal')
-        .setTitle('Footer')
+        .setTitle('Pied de page')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('text')
-              .setLabel('Text')
+              .setLabel('Texte')
               .setMaxLength(2048)
               .setValue(embed.footer?.text || '')
               .setStyle(TextInputStyle.Short)
@@ -31,7 +31,7 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('iconURL')
-              .setLabel('Icon URL')
+              .setLabel('URL de l’icône')
               .setMaxLength(1000)
               .setValue(embed.footer?.iconURL || '')
               .setStyle(TextInputStyle.Short)
@@ -55,13 +55,13 @@ const modal = new Modal(
     if (!text && iconURL)
       return interaction.reply({
         content:
-          '`❌` If you set an icon URL, you must also enter text.',
+          '`❌` Si vous définissez une URL d’icône, vous devez également entrer du texte.',
         ephemeral: true,
       });
     if (iconURL && !isURL(iconURL))
       return interaction.reply({
         content:
-          '`❌` Please enter a URL starting with `http://` or `https://`.',
+          '`❌` Veuillez entrer une URL commençant par `http://` ou `https://`.',
         ephemeral: true,
       });
 

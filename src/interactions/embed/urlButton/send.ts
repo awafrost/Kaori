@@ -19,7 +19,7 @@ const sendLinkButton = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-linkButton-sendModal')
-        .setTitle('Create Button')
+        .setTitle('Créer un bouton')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
@@ -30,7 +30,7 @@ const sendLinkButton = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('label')
-              .setLabel('Button Text')
+              .setLabel('Texte du bouton')
               .setMaxLength(80)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -38,8 +38,8 @@ const sendLinkButton = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('emojiNameOrId')
-              .setLabel('Unicode Emoji or Custom Emoji')
-              .setPlaceholder('One character only; for custom emoji, enter name or ID')
+              .setLabel('Emoji Unicode ou personnalisé')
+              .setPlaceholder('Un seul caractère ; pour emoji perso, entrez nom ou ID')
               .setMaxLength(32)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -52,7 +52,7 @@ const sendLinkButton = new Button(
 const sendLinkButtonModal = new Modal(
   { customId: 'kaori:embedMaker-linkButton-sendModal' },
   async (interaction) => {
-    // Create Button
+    // Créer le bouton
     if (
       !interaction.isFromMessage() ||
       !interaction.inCachedGuild() ||
@@ -75,13 +75,13 @@ const sendLinkButtonModal = new Modal(
     if (!label && !emoji)
       return interaction.reply({
         content:
-          '`❌` You must provide either button text or emoji.',
+          '`❌` Vous devez fournir soit un texte pour le bouton, soit un emoji.',
         ephemeral: true,
       });
     if (!isURL(url))
       return interaction.reply({
         content:
-          '`❌` Please enter a URL starting with `http://` or `https://`.',
+          '`❌` Veuillez entrer une URL commençant par `http://` ou `https://`.',
         ephemeral: true,
       });
 
@@ -90,7 +90,7 @@ const sendLinkButtonModal = new Modal(
     if (emoji) button.setEmoji(emoji);
     if (label) button.setLabel(label);
 
-    // Edit Message
+    // Modifier le message
     if (
       !interaction.guild.members.me?.permissions.has(
         PermissionFlagsBits.ManageWebhooks,
@@ -98,7 +98,7 @@ const sendLinkButtonModal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` To use this feature, please grant the bot `Manage Webhooks` permission.',
+          '`❌` Pour utiliser cette fonctionnalité, veuillez accorder la permission `Gérer les webhooks` au bot.',
         ephemeral: true,
       });
 
@@ -111,19 +111,19 @@ const sendLinkButtonModal = new Modal(
 
     if (!targetMessage)
       return interaction.reply({
-        content: '`❌` There was an issue retrieving the message.',
+        content: '`❌` Un problème est survenu lors de la récupération du message.',
         ephemeral: true,
       });
 
     const webhook = await targetMessage.fetchWebhook().catch(() => null);
     if (!webhook || interaction.client.user.id !== webhook.owner?.id)
       return interaction.reply({
-        content: '`❌` This message cannot be updated.',
+        content: '`❌` Ce message ne peut pas être mis à jour.',
         ephemeral: true,
       });
     if (targetMessage.components[4]?.components?.length === 5)
       return interaction.reply({
-        content: '`❌` No more components can be added!',
+        content: '`❌` Aucun composant supplémentaire ne peut être ajouté !',
         ephemeral: true,
       });
     if (
@@ -132,7 +132,7 @@ const sendLinkButtonModal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` Select menus and buttons cannot be added to the same message.',
+          '`❌` Les menus déroulants et les boutons ne peuvent pas être ajoutés au même message.',
         ephemeral: true,
       });
 
@@ -157,7 +157,7 @@ const sendLinkButtonModal = new Modal(
     const embeds = interaction.message.embeds;
     const components = interaction.message.components;
     await interaction.update({
-      content: '`⌛` Adding components...',
+      content: '`⌛` Ajout des composants en cours...',
       embeds: [],
       components: [],
     });
@@ -167,14 +167,14 @@ const sendLinkButtonModal = new Modal(
       .editMessage(targetMessage, { components: updatedComponents })
       .then(() =>
         interaction.editReply({
-          content: '`✅` Components added!',
+          content: '`✅` Composants ajoutés !',
           embeds,
           components,
         }),
       )
       .catch(() =>
         interaction.editReply({
-          content: '`❌` There was an issue updating the components.',
+          content: '`❌` Un problème est survenu lors de la mise à jour des composants.',
           embeds,
           components,
         }),

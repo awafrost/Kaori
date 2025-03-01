@@ -19,7 +19,7 @@ import {
 export default new ChatInput(
   {
     name: 'mutelist',
-    description: 'View users currently in timeout with unmute option',
+    description: 'Voir les utilisateurs actuellement en isolement avec une option pour les réactiver',
   },
   async (interaction: ChatInputCommandInteraction<CacheType>) => {
     if (!interaction.inCachedGuild()) return;
@@ -30,7 +30,7 @@ export default new ChatInput(
     );
 
     const embed = new EmbedBuilder()
-      .setTitle('Muted Members')
+      .setTitle('Membres en isolement')
       .setColor(Colors.Orange);
 
     if (mutedMembers.size > 0) {
@@ -39,21 +39,21 @@ export default new ChatInput(
           const timeoutEnds = Math.floor(member.communicationDisabledUntilTimestamp / 1000);
           embed.addFields({
             name: member.user.tag,
-            value: `ID: ${member.id}\nTimeout ends: <t:${timeoutEnds}:R>`,
+            value: `ID : ${member.id}\nFin de l’isolement : <t:${timeoutEnds}:R>`,
           });
         }
       });
 
       const unmuteButton = new ButtonBuilder()
         .setCustomId('unmuteMenu')
-        .setLabel('Unmute User')
+        .setLabel('Réactiver un utilisateur')
         .setStyle(ButtonStyle.Danger);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(unmuteButton);
 
       await interaction.reply({ embeds: [embed], components: [row] });
     } else {
-      embed.setDescription('No members are currently muted.');
+      embed.setDescription('Aucun membre n’est actuellement en isolement.');
       await interaction.reply({ embeds: [embed] });
     }
   },
@@ -67,7 +67,7 @@ export const interactionCreateHandler = {
 
     if (interaction.isButton() && interaction.customId === 'unmuteMenu') {
       if (!interaction.guild) {
-        await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+        await interaction.reply({ content: 'Cette commande ne peut être utilisée que dans un serveur.', ephemeral: true });
         return;
       }
       const now = Date.now();
@@ -76,13 +76,13 @@ export const interactionCreateHandler = {
       );
 
       if (mutedMembers.size === 0) {
-        await interaction.reply({ content: 'There are no muted members to unmute.', ephemeral: true });
+        await interaction.reply({ content: 'Il n’y a aucun membre en isolement à réactiver.', ephemeral: true });
         return;
       }
 
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('selectUserToUnmute')
-        .setPlaceholder('Select a user to unmute');
+        .setPlaceholder('Sélectionnez un utilisateur à réactiver');
 
       mutedMembers.forEach((member: GuildMember) => {
         selectMenu.addOptions(
@@ -95,29 +95,29 @@ export const interactionCreateHandler = {
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
       await interaction.reply({ 
-        content: 'Please select the user you want to unmute:', 
+        content: 'Veuillez sélectionner l’utilisateur que vous souhaitez réactiver :', 
         components: [row],
         ephemeral: true 
       });
     } else if (interaction.isStringSelectMenu() && interaction.customId === 'selectUserToUnmute') {
       if (!interaction.guild) {
-        await interaction.update({ content: 'This command can only be used in a server.', components: [] });
+        await interaction.update({ content: 'Cette commande ne peut être utilisée que dans un serveur.', components: [] });
         return;
       }
       const memberId = interaction.values[0];
       const member = await interaction.guild.members.fetch(memberId).catch(() => null);
 
       if (!member) {
-        await interaction.update({ content: 'Member could not be found or has left the server.', components: [] });
+        await interaction.update({ content: 'Le membre n’a pas pu être trouvé ou a quitté le serveur.', components: [] });
         return;
       }
 
       try {
-        await member.timeout(null, `Unmuted by ${interaction.user.tag}`);
-        await interaction.update({ content: `Successfully unmuted ${member.user.tag}.`, components: [] });
+        await member.timeout(null, `Réactivé par ${interaction.user.tag}`);
+        await interaction.update({ content: `${member.user.tag} a été réactivé avec succès.`, components: [] });
       } catch (error) {
-        console.error('Failed to unmute user:', error);
-        await interaction.update({ content: `Error unmuting ${member.user.tag}. Please check bot permissions.`, components: [] });
+        console.error('Échec de la réactivation de l’utilisateur :', error);
+        await interaction.update({ content: `Erreur lors de la réactivation de ${member.user.tag}. Veuillez vérifier les permissions du bot.`, components: [] });
       }
     }
   }

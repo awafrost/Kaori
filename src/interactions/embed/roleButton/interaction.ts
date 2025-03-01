@@ -17,7 +17,7 @@ const button = new Button(
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`✅\` Successfully removed the ${roleMention(roleId)} role.`,
+                  `\`✅\` Le rôle ${roleMention(roleId)} a été supprimé avec succès.`,
                 )
                 .setColor(Colors.Green),
             ],
@@ -30,7 +30,7 @@ const button = new Button(
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`❌\` Failed to remove the role.\n${codeBlock(e)}`,
+                  `\`❌\` Échec de la suppression du rôle.\n${codeBlock(e)}`,
                 )
                 .setColor(Colors.Red),
             ],
@@ -44,7 +44,9 @@ const button = new Button(
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(`\`✅\` Successfully added the ${roleMention(roleId)} role.`)
+                .setDescription(
+                  `\`✅\` Le rôle ${roleMention(roleId)} a été ajouté avec succès.`,
+                )
                 .setColor(Colors.Green),
             ],
             ephemeral: true,
@@ -56,7 +58,7 @@ const button = new Button(
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`❌\` Failed to add the role.\n${codeBlock(e)}`,
+                  `\`❌\` Échec de l’ajout du rôle.\n${codeBlock(e)}`,
                 )
                 .setColor(Colors.Red),
             ],

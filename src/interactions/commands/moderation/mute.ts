@@ -14,22 +14,22 @@ import {
 export default new ChatInput(
   {
     name: 'mute',
-    description: 'Timeout a user (more flexible than the official feature)',
+    description: 'Mettre un utilisateur en isolement (plus flexible que la fonction officielle)',
     options: [
       {
         name: 'user',
-        description: 'User',
+        description: 'Utilisateur',
         type: ApplicationCommandOptionType.User,
         required: true,
       },
       {
         name: 'date',
-        description: 'Days',
+        description: 'Jours',
         type: ApplicationCommandOptionType.Number,
       },
       {
         name: 'hour',
-        description: 'Hours',
+        description: 'Heures',
         type: ApplicationCommandOptionType.Number,
       },
       {
@@ -39,7 +39,7 @@ export default new ChatInput(
       },
       {
         name: 'reason',
-        description: 'Reason',
+        description: 'Raison',
         type: ApplicationCommandOptionType.String,
       },
     ],
@@ -61,27 +61,27 @@ export default new ChatInput(
 
     if (duration <= 0)
       return interaction.reply({
-        content: `${inlineCode('❌')} Total time must be at least 1 minute`,
+        content: `${inlineCode('❌')} La durée totale doit être d’au moins 1 minute`,
         ephemeral: true,
       });
     if (Duration.toMS('28d') < duration)
       return interaction.reply({
-        content: `${inlineCode('❌')} Timeouts cannot exceed 28 days`,
+        content: `${inlineCode('❌')} Les isolements ne peuvent pas dépasser 28 jours`,
         ephemeral: true,
       });
     if (!(member instanceof GuildMember))
       return interaction.reply({
-        content: `${inlineCode('❌')} This user is not in the server`,
+        content: `${inlineCode('❌')} Cet utilisateur n’est pas sur le serveur`,
         ephemeral: true,
       });
     if (member.user.equals(interaction.user))
       return interaction.reply({
-        content: `${inlineCode('❌')} You cannot timeout yourself`,
+        content: `${inlineCode('❌')} Vous ne pouvez pas vous mettre en isolement vous-même`,
         ephemeral: true,
       });
     if (!member.moderatable)
       return interaction.reply({
-        content: `${inlineCode('❌')} You do not have permission to timeout this user`,
+        content: `${inlineCode('❌')} Vous n’avez pas la permission de mettre cet utilisateur en isolement`,
         ephemeral: true,
       });
     if (
@@ -89,7 +89,7 @@ export default new ChatInput(
       interaction.member.roles.highest.position < member.roles.highest.position
     )
       return interaction.reply({
-        content: `${inlineCode('❌')} You do not have permission to timeout this user`,
+        content: `${inlineCode('❌')} Vous n’avez pas la permission de mettre cet utilisateur en isolement`,
         ephemeral: true,
       });
 
@@ -97,7 +97,7 @@ export default new ChatInput(
       .timeout(
         duration,
         `${
-          interaction.options.getString('reason') ?? 'No reason provided'
+          interaction.options.getString('reason') ?? 'Aucune raison fournie'
         } - ${interaction.user.tag}`,
       )
       .then(() => {
@@ -105,9 +105,9 @@ export default new ChatInput(
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `${inlineCode('✅')} ${member} has been timed out for ${Duration.format(
+                `${inlineCode('✅')} ${member} a été mis en isolement pendant ${Duration.format(
                   duration,
-                  `${bold('%{d}')}d ${bold('%{h}')}h ${bold('%{m}')}m`,
+                  `${bold('%{d}')} jours ${bold('%{h}')} heures ${bold('%{m}')} minutes`,
                 )}`,
               )
               .setColor(Colors.Red),
@@ -121,7 +121,7 @@ export default new ChatInput(
             new EmbedBuilder()
               .setDescription(
                 [
-                  `${inlineCode('❌')} Failed to timeout user`,
+                  `${inlineCode('❌')} Échec de la mise en isolement de l’utilisateur`,
                   codeBlock(err),
                 ].join('\n'),
               )

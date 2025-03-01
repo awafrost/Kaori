@@ -24,20 +24,20 @@ const sendRoleButton = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-roleButton-sendModal')
-        .setTitle('Create Button')
+        .setTitle('Créer un bouton')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('roleNameOrId')
-              .setLabel('Role Name or ID')
+              .setLabel('Nom ou ID du rôle')
               .setMaxLength(100)
               .setStyle(TextInputStyle.Short),
           ),
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('displayName')
-              .setLabel('Display Name on Button')
-              .setPlaceholder('e.g., Minecraft players')
+              .setLabel('Nom affiché sur le bouton')
+              .setPlaceholder('ex. : Joueurs Minecraft')
               .setMaxLength(80)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -45,8 +45,8 @@ const sendRoleButton = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('emojiNameOrId')
-              .setLabel('Unicode Emoji or Custom Emoji')
-              .setPlaceholder('One character only; custom emoji requires name or ID')
+              .setLabel('Emoji Unicode ou personnalisé')
+              .setPlaceholder('Un seul caractère ; emoji perso nécessite nom ou ID')
               .setMaxLength(32)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -59,7 +59,7 @@ const sendRoleButton = new Button(
 const sendRoleButtonModal = new Modal(
   { customId: 'kaori:embedMaker-roleButton-sendModal' },
   async (interaction) => {
-    // Create Button
+    // Créer le bouton
     if (
       !interaction.isFromMessage() ||
       !interaction.inCachedGuild() ||
@@ -86,13 +86,13 @@ const sendRoleButtonModal = new Modal(
 
     if (!(role instanceof Role))
       return interaction.reply({
-        content: '`❌` Could not find a role matching the entered value.',
+        content: '`❌` Aucun rôle correspondant à la valeur saisie n’a été trouvé.',
         ephemeral: true,
       });
     if (role?.managed)
       return interaction.reply({
         content:
-          '`❌` This role is managed by an external service and cannot be added to the select menu.',
+          '`❌` Ce rôle est géré par un service externe et ne peut pas être ajouté au menu de sélection.',
         ephemeral: true,
       });
     if (
@@ -101,7 +101,7 @@ const sendRoleButtonModal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` You cannot add a role higher than your own roles.',
+          '`❌` Vous ne pouvez pas ajouter un rôle supérieur à vos propres rôles.',
       });
 
     const button = new ButtonBuilder()
@@ -113,7 +113,7 @@ const sendRoleButtonModal = new Modal(
       button.setEmoji(emoji);
     } else button.setLabel(displayName || role.name);
 
-    // Edit Message
+    // Modifier le message
     if (
       !interaction.guild.members.me?.permissions.has(
         PermissionFlagsBits.ManageWebhooks,
@@ -121,7 +121,7 @@ const sendRoleButtonModal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` You need to grant the "Manage Webhooks" permission to the bot to use this feature.',
+          '`❌` Vous devez accorder la permission "Gérer les webhooks" au bot pour utiliser cette fonctionnalité.',
         ephemeral: true,
       });
 
@@ -134,19 +134,19 @@ const sendRoleButtonModal = new Modal(
 
     if (!targetMessage)
       return interaction.reply({
-        content: '`❌` There was an issue fetching the message.',
+        content: '`❌` Un problème est survenu lors de la récupération du message.',
         ephemeral: true,
       });
 
     const webhook = await targetMessage.fetchWebhook().catch(() => null);
     if (!webhook || interaction.client.user.id !== webhook.owner?.id)
       return interaction.reply({
-        content: '`❌` This message cannot be updated.',
+        content: '`❌` Ce message ne peut pas être mis à jour.',
         ephemeral: true,
       });
     if (targetMessage.components[4]?.components?.length === 5)
       return interaction.reply({
-        content: '`❌` No more components can be added!',
+        content: '`❌` Aucun composant supplémentaire ne peut être ajouté !',
         ephemeral: true,
       });
     if (
@@ -155,7 +155,7 @@ const sendRoleButtonModal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` Select menus and buttons cannot be added to the same message.',
+          '`❌` Les menus déroulants et les boutons ne peuvent pas être ajoutés au même message.',
         ephemeral: true,
       });
     if (
@@ -166,7 +166,7 @@ const sendRoleButtonModal = new Modal(
       )
     )
       return interaction.reply({
-        content: '`❌` This role button has already been added.',
+        content: '`❌` Ce bouton de rôle a déjà été ajouté.',
         ephemeral: true,
       });
 
@@ -191,7 +191,7 @@ const sendRoleButtonModal = new Modal(
     const embeds = interaction.message.embeds;
     const components = interaction.message.components;
 
-    // Check Permission
+    // Vérifier les permissions
     const dangerPermissions = getDangerPermission(role);
 
     if (dangerPermissions.length) {
@@ -199,11 +199,11 @@ const sendRoleButtonModal = new Modal(
         content: null,
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .setTitle('`⚠️` Warning!')
+            .setTitle('`⚠️` Attention !')
             .setDescription(
               [
-                `${role} has potentially dangerous permissions.` +
-                '**Do you really want to add this role?**',
+                `${role} possède des permissions potentiellement dangereuses.` +
+                '**Voulez-vous vraiment ajouter ce rôle ?**',
                 '',
                 `> ${permToText(...dangerPermissions)
                   .map((v) => inlineCode(v))
@@ -216,11 +216,11 @@ const sendRoleButtonModal = new Modal(
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:embedMaker-roleButton-send-agree')
-              .setLabel('Yes')
+              .setLabel('Oui')
               .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
               .setCustomId('kaori:embedMaker-roleButton-send-disagree')
-              .setLabel('No')
+              .setLabel('Non')
               .setStyle(ButtonStyle.Danger),
           ),
         ],
@@ -238,7 +238,7 @@ const sendRoleButtonModal = new Modal(
             return i.update({ embeds, components });
 
           await i.update({
-            content: '`⌛` Adding component...',
+            content: '`⌛` Ajout du composant en cours...',
             embeds: [],
             components: [],
           });
@@ -247,14 +247,14 @@ const sendRoleButtonModal = new Modal(
             .editMessage(targetMessage, { components: updatedComponents })
             .then(() =>
               i.editReply({
-                content: '`✅` Component added!',
+                content: '`✅` Composant ajouté !',
                 embeds,
                 components,
               }),
             )
             .catch(() =>
               i.editReply({
-                content: '`❌` There was an issue updating the component.',
+                content: '`❌` Un problème est survenu lors de la mise à jour du composant.',
                 embeds,
                 components,
               }),
@@ -263,7 +263,7 @@ const sendRoleButtonModal = new Modal(
         .catch(() => {});
     } else {
       await interaction.update({
-        content: '`⌛` Adding component...',
+        content: '`⌛` Ajout du composant en cours...',
         embeds: [],
         components: [],
       });
@@ -272,14 +272,14 @@ const sendRoleButtonModal = new Modal(
         .editMessage(targetMessage, { components: updatedComponents })
         .then(() =>
           interaction.editReply({
-            content: '`✅` Component added!',
+            content: '`✅` Composant ajouté !',
             embeds,
             components,
           }),
         )
         .catch(() =>
           interaction.editReply({
-            content: '`❌` There was an issue updating the component.',
+            content: '`❌` Un problème est survenu lors de la mise à jour du composant.',
             embeds,
             components,
           }),

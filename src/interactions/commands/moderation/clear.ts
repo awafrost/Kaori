@@ -14,11 +14,11 @@ import {
 export default new ChatInput(
   {
     name: 'clear',
-    description: 'Bulk delete messages with enhanced functionality',
+    description: 'Supprimer en masse des messages avec des fonctionnalités avancées',
     options: [
       {
         name: 'count',
-        description: 'Number of messages to delete',
+        description: 'Nombre de messages à supprimer',
         type: ApplicationCommandOptionType.Integer,
         minValue: 1,
         maxValue: 1000,
@@ -26,29 +26,29 @@ export default new ChatInput(
       },
       {
         name: 'from',
-        description: 'Delete messages from (member/bot/all)',
+        description: 'Supprimer les messages de (membre/bot/tous)',
         type: ApplicationCommandOptionType.String,
         choices: [
-          { name: 'Member', value: 'member' },
+          { name: 'Membre', value: 'member' },
           { name: 'Bot', value: 'bot' },
-          { name: 'All', value: 'all' },
+          { name: 'Tous', value: 'all' },
         ],
       },
       {
         name: 'user',
-        description: 'User to filter messages from (if "from" is "member")',
+        description: 'Utilisateur dont filtrer les messages (si "from" est "membre")',
         type: ApplicationCommandOptionType.User,
       },
       {
         name: 'type',
-        description: 'Type of content to delete',
+        description: 'Type de contenu à supprimer',
         type: ApplicationCommandOptionType.String,
         choices: [
-          { name: 'All', value: 'all' },
+          { name: 'Tous', value: 'all' },
           { name: 'Images', value: 'image' },
-          { name: 'Videos', value: 'video' },
+          { name: 'Vidéos', value: 'video' },
           { name: 'Embeds', value: 'embed' },
-          { name: 'Text Only', value: 'text' },
+          { name: 'Texte uniquement', value: 'text' },
         ],
       },
     ],
@@ -61,7 +61,7 @@ export default new ChatInput(
     if (!interaction.appPermissions.has(PermissionFlagsBits.ManageMessages)) {
       return interaction.reply({
         content: permissionField(permToText('ManageMessages'), {
-          label: 'The bot lacks necessary permissions',
+          label: 'Le bot manque des permissions nécessaires',
         }),
         ephemeral: true,
       });
@@ -81,7 +81,7 @@ export default new ChatInput(
         case 'member':
           if (!user) {
             return interaction.reply({
-              content: `${inlineCode('❌')} You must specify a user when choosing to delete messages from a member.`,
+              content: `${inlineCode('❌')} Vous devez spécifier un utilisateur lorsque vous choisissez de supprimer les messages d’un membre.`,
               ephemeral: true,
             });
           }
@@ -116,7 +116,7 @@ export default new ChatInput(
         embeds: [
           new EmbedBuilder()
             .setDescription(
-              `${inlineCode('✅')} Successfully deleted ${inlineCode(`${deleted.size} messages`)}.`
+              `${inlineCode('✅')} ${inlineCode(`${deleted.size} messages`)} supprimés avec succès.`
             )
             .setColor(Colors.Green),
         ],
@@ -130,7 +130,7 @@ export default new ChatInput(
           new EmbedBuilder()
             .setDescription(
               [
-                `${inlineCode('❌')} Failed to delete messages.`,
+                `${inlineCode('❌')} Échec de la suppression des messages.`,
                 codeBlock(errorMessage),
               ].join('\n'),
             )

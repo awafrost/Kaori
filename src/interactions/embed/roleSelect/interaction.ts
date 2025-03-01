@@ -31,7 +31,7 @@ const roleSelect = new SelectMenu(
       return interaction.followUp({
         embeds: [
           new EmbedBuilder()
-            .setDescription('`❌` Some roles could not be added/removed.')
+            .setDescription('`❌` Certains rôles n’ont pas pu être ajoutés ou supprimés.')
             .setColor(Colors.Red),
         ],
         ephemeral: true,
@@ -40,7 +40,7 @@ const roleSelect = new SelectMenu(
     await interaction.followUp({
       embeds: [
         new EmbedBuilder()
-          .setDescription('`✅` Roles have been updated!')
+          .setDescription('`✅` Les rôles ont été mis à jour !')
           .setColor(Colors.Green),
       ],
       ephemeral: true,

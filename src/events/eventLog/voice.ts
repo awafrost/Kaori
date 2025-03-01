@@ -20,67 +20,67 @@ export default new DiscordEventBuilder({
       .setThumbnail(newState.member.displayAvatarURL())
       .setTimestamp();
 
-    // Log channel changes
+    // Détection des changements de canal vocal
     if (!oldState.channel && newState.channel) {
       embed
-        .setTitle('🔊 Joined Channel')
+        .setTitle('🔊 Connexion au salon vocal')
         .setDescription(
           [
-            userField(newState.member.user, { label: 'Member' }),
-            channelField(newState.channel, { label: 'Channel' }),
+            userField(newState.member.user, { label: 'Membre' }),
+            channelField(newState.channel, { label: 'Salon' }),
           ].join('\n')
         )
         .setColor(Colors.Green);
     } else if (oldState.channel && !newState.channel) {
       embed
-        .setTitle('🔊 Left Channel')
+        .setTitle('🔴 Déconnexion du salon vocal')
         .setDescription(
           [
-            userField(newState.member.user, { label: 'Member' }),
-            channelField(oldState.channel, { label: 'Channel' }),
+            userField(newState.member.user, { label: 'Membre' }),
+            channelField(oldState.channel, { label: 'Salon' }),
           ].join('\n')
         )
         .setColor(Colors.Red);
     } else if (oldState.channel && newState.channel && !oldState.channel.equals(newState.channel)) {
       embed
-        .setTitle('🔊 Channel Moved')
+        .setTitle('🔄 Changement de salon vocal')
         .setDescription(
           [
-            userField(newState.member.user, { label: 'Member' }),
-            channelField(oldState.channel, { label: 'Previous Channel' }),
-            channelField(newState.channel, { label: 'New Channel' }),
+            userField(newState.member.user, { label: 'Membre' }),
+            channelField(oldState.channel, { label: 'Ancien salon' }),
+            channelField(newState.channel, { label: 'Nouveau salon' }),
           ].join('\n')
         )
         .setColor(Colors.Yellow);
     }
 
-    // Log mute/unmute events
+    // Détection des changements de micro
     if (oldState.selfMute !== newState.selfMute) {
       embed
-        .setTitle(newState.selfMute ? '🔇 Self-Muted' : '🔊 Self-Unmuted')
-        .setDescription(userField(newState.member.user, { label: 'Member' }))
+        .setTitle(newState.selfMute ? '🔇 Micro coupé (auto)' : '🔊 Micro réactivé (auto)')
+        .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.selfMute ? Colors.DarkRed : Colors.DarkGreen);
     } else if (oldState.mute !== newState.mute) {
       embed
-        .setTitle(newState.mute ? '🔇 Muted by Staff' : '🔊 Unmuted by Staff')
-        .setDescription(userField(newState.member.user, { label: 'Member' }))
+        .setTitle(newState.mute ? '🔇 Micro coupé par un modérateur' : '🔊 Micro réactivé par un modérateur')
+        .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.mute ? Colors.Red : Colors.Green);
     }
 
-    // Log deafen/undeafen events
+    // Détection des changements de son
     if (oldState.selfDeaf !== newState.selfDeaf) {
       embed
-        .setTitle(newState.selfDeaf ? '🔇 Self-Deafened' : '🔊 Self-Undeafened')
-        .setDescription(userField(newState.member.user, { label: 'Member' }))
+        .setTitle(newState.selfDeaf ? '🔇 Son coupé (auto)' : '🔊 Son réactivé (auto)')
+        .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.selfDeaf ? Colors.DarkRed : Colors.DarkGreen);
     } else if (oldState.deaf !== newState.deaf) {
       embed
-        .setTitle(newState.deaf ? '🔇 Deafened by Staff' : '🔊 Undeafened by Staff')
-        .setDescription(userField(newState.member.user, { label: 'Member' }))
+        .setTitle(newState.deaf ? '🔇 Son coupé par un modérateur' : '🔊 Son réactivé par un modérateur')
+        .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.deaf ? Colors.Red : Colors.Green);
     }
 
-    // Send the embed if it has been modified
+    // Vérification et envoi du message
     if (embed.data.title) {
       channel.send({ embeds: [embed] });
     }

@@ -10,6 +10,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   type GuildAuditLogsEntry,
   inlineCode,
   InteractionType,
@@ -64,7 +67,7 @@ export default new DiscordEventBuilder({
 
     if (!isCancel) {
       const unbanButton = new ButtonBuilder()
-        .setCustomId(`unban_${target.id}`) // Stocke l'ID de l'utilisateur dans le custom ID
+        .setCustomId('unban_request')
         .setLabel('Débannir')
         .setStyle(ButtonStyle.Success);
 
@@ -86,18 +89,47 @@ function isBanLog(
   return (state as unknown as AuditLogEvent[]).includes(entry.action);
 }
 
-// Nouveau gestionnaire d'événements pour les interactions avec les boutons
+// Gestion des interactions (bouton et modal)
 export const interactionCreate = new DiscordEventBuilder({
   type: Events.InteractionCreate,
   async execute(interaction) {
-    if (interaction.type !== InteractionType.MessageComponent) return;
-    if (!interaction.isButton()) return;
+    if (interaction.type !== InteractionType.MessageComponent && interaction.type !== InteractionType.ModalSubmit) return;
 
-    const [command, userId] = interaction.customId.split('_');
+    // Si l'utilisateur clique sur le bouton "Débannir"
+    if (interaction.isButton() && interaction.customId === 'unban_request') {
+      const modal = new ModalBuilder()
+        .setCustomId('unban_modal')
+        .setTitle('Débannissement');
 
-    if (command === 'unban') {
+      const userIdInput = new TextInputBuilder()
+        .setCustomId('unban_user_id')
+        .setLabel('ID de l’utilisateur')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Entrez l’ID du membre')
+        .setRequired(true);
+
+      const reasonInput = new TextInputBuilder()
+        .setCustomId('unban_reason')
+        .setLabel('Raison du débannissement')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Expliquez pourquoi cet utilisateur est débanni.')
+        .setRequired(true);
+
+      const actionRow1 = new ActionRowBuilder<TextInputBuilder>().addComponents(userIdInput);
+      const actionRow2 = new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput);
+
+      modal.addComponents(actionRow1, actionRow2);
+
+      await interaction.showModal(modal);
+    }
+
+    // Si l'utilisateur soumet le formulaire
+    if (interaction.isModalSubmit() && interaction.customId === 'unban_modal') {
       try {
-        // Vérification des permissions pour débannir
+        const userId = interaction.fields.getTextInputValue('unban_user_id');
+        const reason = interaction.fields.getTextInputValue('unban_reason');
+
+        // Vérification des permissions
         if (!interaction.guildId || !interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
           await interaction.reply({ content: 'Vous n\'avez pas la permission de débannir des utilisateurs.', ephemeral: true });
           return;
@@ -110,10 +142,29 @@ export const interactionCreate = new DiscordEventBuilder({
         }
 
         // Débannir l'utilisateur
-        await interaction.guild.members.unban(userId, `Débanni par ${interaction.user.tag}`);
-        await interaction.reply({ content: `L'utilisateur ${userId} a été débanni.`, ephemeral: true });
+        await interaction.guild.members.unban(userId, `Débanni par ${interaction.user.tag} | Raison : ${reason}`);
+        await interaction.reply({ content: `L'utilisateur <@${userId}> a été débanni avec succès.`, ephemeral: true });
 
-        // Optionnellement, vous pourriez vouloir logger cette action ou mettre à jour le message pour indiquer que l'utilisateur a été débanni
+        // Logger l'action dans les logs du serveur
+        const logConfig = await EventLogConfig.findOne({ guildId: interaction.guild.id });
+        if (logConfig?.ban?.enabled && logConfig.ban.channel) {
+          const logChannel = await getSendableChannel(interaction.guild, logConfig.ban.channel);
+          if (logChannel) {
+            const logEmbed = new EmbedBuilder()
+              .setTitle('✅ Débannissement effectué')
+              .setColor(Colors.Green)
+              .setDescription(
+                [
+                  `👤 **Utilisateur débanni** : <@${userId}> (${userId})`,
+                  `🛠️ **Modérateur** : ${interaction.user.tag}`,
+                  `📝 **Raison** : ${reason}`,
+                ].join('\n'),
+              )
+              .setTimestamp();
+
+            await logChannel.send({ embeds: [logEmbed] });
+          }
+        }
       } catch (error) {
         console.error('Échec du débannissement de l\'utilisateur:', error);
         await interaction.reply({ content: 'Il y a eu une erreur lors du débannissement de cet utilisateur.', ephemeral: true });

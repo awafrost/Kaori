@@ -19,7 +19,7 @@ import {
 const duringAuthentication = new Set<string>();
 
 const verifyTypes = {
-  button: 'Button',
+  button: 'Bouton',
   image: 'Image',
 } satisfies Record<string, string>;
 type VerifyType = keyof typeof verifyTypes;
@@ -27,11 +27,11 @@ type VerifyType = keyof typeof verifyTypes;
 const verifyCommand = new ChatInput(
   {
     name: 'verify',
-    description: 'Create a verification panel using roles',
+    description: 'Créer un panneau de vérification utilisant des rôles',
     options: [
       {
         name: 'type',
-        description: 'Verification type',
+        description: 'Type de vérification',
         choices: Object.entries(verifyTypes).map(([value, name]) => ({
           name,
           value,
@@ -41,29 +41,29 @@ const verifyCommand = new ChatInput(
       },
       {
         name: 'role',
-        description: 'Role to assign upon successful verification',
+        description: 'Rôle à attribuer après une vérification réussie',
         type: ApplicationCommandOptionType.Role,
         required: true,
       },
       {
         name: 'description',
-        description: 'Embed description (use two spaces for line breaks)',
+        description: 'Description de l’embed (utilisez deux espaces pour un saut de ligne)',
         type: ApplicationCommandOptionType.String,
         maxLength: 4096,
       },
       {
         name: 'color',
-        description: 'Embed color',
+        description: 'Couleur de l’embed',
         type: ApplicationCommandOptionType.Number,
         choices: [
-          { name: '🔴 Red', value: Colors.Red },
+          { name: '🔴 Rouge', value: Colors.Red },
           { name: '🟠 Orange', value: Colors.Orange },
-          { name: '🟡 Yellow', value: Colors.Yellow },
-          { name: '🟢 Green', value: Colors.Green },
-          { name: '🔵 Blue', value: Colors.Blue },
-          { name: '🟣 Purple', value: Colors.Purple },
-          { name: '⚪ White', value: Colors.White },
-          { name: '⚫ Black', value: Colors.DarkButNotBlack },
+          { name: '🟡 Jaune', value: Colors.Yellow },
+          { name: '🟢 Vert', value: Colors.Green },
+          { name: '🔵 Bleu', value: Colors.Blue },
+          { name: '🟣 Violet', value: Colors.Purple },
+          { name: '⚪ Blanc', value: Colors.White },
+          { name: '⚫ Noir', value: Colors.DarkButNotBlack },
         ],
       },
       {
@@ -88,13 +88,13 @@ const verifyCommand = new ChatInput(
     )
       return interaction.reply({
         content: permissionField(permToText('ManageRoles'), {
-          label: 'The bot lacks the necessary permissions',
+          label: 'Le bot n’a pas les permissions nécessaires',
         }),
         ephemeral: true,
       });
     if (role.managed || role.id === interaction.guild.roles.everyone.id)
       return interaction.reply({
-        content: `${inlineCode('❌')} That role cannot be used for verification`,
+        content: `${inlineCode('❌')} Ce rôle ne peut pas être utilisé pour la vérification`,
         ephemeral: true,
       });
     if (
@@ -104,14 +104,14 @@ const verifyCommand = new ChatInput(
       return interaction.reply({
         content: `${inlineCode(
           '❌',
-        )} You cannot use a role higher than your own for verification`,
+        )} Vous ne pouvez pas utiliser un rôle supérieur au vôtre pour la vérification`,
         ephemeral: true,
       });
     if (!role.editable)
       return interaction.reply({
         content: `${inlineCode(
           '❌',
-        )} You cannot use a role higher than the bot's for verification`,
+        )} Vous ne pouvez pas utiliser un rôle supérieur à celui du bot pour la vérification`,
         ephemeral: true,
       });
 
@@ -123,7 +123,7 @@ const verifyCommand = new ChatInput(
     interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setTitle(`${inlineCode('✅')} Verification: ${verifyTypes[verifyType]}`)
+          .setTitle(`${inlineCode('✅')} Vérification : ${verifyTypes[verifyType]}`)
           .setDescription(
             interaction.options.getString('description')?.replace('  ', '\n') ||
               null,
@@ -131,7 +131,7 @@ const verifyCommand = new ChatInput(
           .setColor(interaction.options.getNumber('color') ?? Colors.Green)
           .setImage(interaction.options.getAttachment('image')?.url || null)
           .setFields({
-            name: 'Role to assign',
+            name: 'Rôle à attribuer',
             value: role.toString(),
           }),
       ],
@@ -139,7 +139,7 @@ const verifyCommand = new ChatInput(
         new ActionRowBuilder<ButtonBuilder>().setComponents(
           new ButtonBuilder()
             .setCustomId(`kaori-js:verify-${verifyType}`)
-            .setLabel('Verify')
+            .setLabel('Vérifier')
             .setStyle(ButtonStyle.Success),
         ),
       ],
@@ -164,26 +164,26 @@ const verifyButton = new Button(
       return interaction.reply({
         content: `${inlineCode(
           '❌',
-        )} You are currently undergoing another verification. You cannot start a new verification until the current one is finished.`,
+        )} Vous êtes actuellement en cours de vérification. Vous ne pouvez pas commencer une nouvelle vérification tant que la précédente n’est pas terminée.`,
         ephemeral: true,
       });
     if (!roleId || !(roles instanceof GuildMemberRoleManager))
       return interaction.reply({
-        content: `${inlineCode('❌')} There was an issue during verification.`,
+        content: `${inlineCode('❌')} Un problème est survenu lors de la vérification.`,
         ephemeral: true,
       });
     if (roles.cache.has(roleId))
       return interaction.reply({
-        content: `${inlineCode('✅')} You are already verified.`,
+        content: `${inlineCode('✅')} Vous êtes déjà vérifié.`,
         ephemeral: true,
       });
 
     if (interaction.customId === 'kaori-js:verify-button') {
       roles
-        .add(roleId, 'Verification')
+        .add(roleId, 'Vérification')
         .then(() =>
           interaction.reply({
-            content: `${inlineCode('✅')} Verification successful!`,
+            content: `${inlineCode('✅')} Vérification réussie !`,
             ephemeral: true,
           }),
         )
@@ -191,7 +191,7 @@ const verifyButton = new Button(
           interaction.reply({
             content: `${inlineCode(
               '❌',
-            )} Failed to assign the role. Please contact a server admin.`,
+            )} Échec de l’attribution du rôle. Veuillez contacter un administrateur du serveur.`,
             ephemeral: true,
           }),
         );
@@ -213,14 +213,14 @@ const verifyButton = new Button(
             new EmbedBuilder()
               .setDescription(
                 [
-                  'Please send the green text displayed in the image below to this DM.',
-                  '> ⚠️ If time passes or you make multiple mistakes, a new verification will need to be issued.',
+                  'Veuillez envoyer le texte vert affiché dans l’image ci-dessous à ce DM.',
+                  '> ⚠️ Si le temps passe ou si vous faites plusieurs erreurs, une nouvelle vérification sera nécessaire.',
                 ].join('\n'),
               )
               .setColor(Colors.Blurple)
               .setImage('attachment://kaori-js-captcha.jpeg')
               .setFooter({
-                text: 'Kaori never asks for password input or QR code scans.',
+                text: 'Kaori ne demande jamais de saisie de mot de passe ni de scan de QR code.',
               }),
           ],
           files: [
@@ -230,7 +230,7 @@ const verifyButton = new Button(
         .then(() => {
           duringAuthentication.add(interaction.user.id);
           interaction.followUp(
-            `${inlineCode('📨')} Continue the verification in DM.`,
+            `${inlineCode('📨')} Continuez la vérification en DM.`,
           );
 
           if (!interaction.user.dmChannel) return;
@@ -245,17 +245,17 @@ const verifyButton = new Button(
             if (tryMessage.content !== text) return;
 
             roles
-              .add(roleId, 'Verification')
+              .add(roleId, 'Vérification')
               .then(() =>
                 interaction.user.send(
-                  `${inlineCode('✅')} Verification successful!`,
+                  `${inlineCode('✅')} Vérification réussie !`,
                 ),
               )
               .catch(() =>
                 interaction.user.send(
                   `${inlineCode(
                     '❌',
-                  )} Failed to assign the role. Please contact a server admin.`,
+                  )} Échec de l’attribution du rôle. Veuillez contacter un administrateur du serveur.`,
                 ),
               )
               .finally(() => collector.stop());
@@ -266,7 +266,7 @@ const verifyButton = new Button(
               interaction.user.send(
                 `${inlineCode(
                   '❌',
-                )} You failed to verify after 3 attempts. You can try again in ${inlineCode(
+                )} Vous avez échoué à la vérification après 3 tentatives. Vous pourrez réessayer dans ${inlineCode(
                   '5 minutes',
                 )}.`,
               );
@@ -281,7 +281,7 @@ const verifyButton = new Button(
           interaction.followUp({
             content: `${inlineCode(
               '❌',
-            )} You must enable DM settings to receive messages from the bot.`,
+            )} Vous devez activer les paramètres de DM pour recevoir les messages du bot.`,
             ephemeral: true,
           });
         });

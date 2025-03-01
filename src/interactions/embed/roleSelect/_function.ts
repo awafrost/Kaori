@@ -33,14 +33,14 @@ export function getRoleSelectMakerButtons(
       )
       .setLabel(
         (selectMenu?.max_values || 0) <= 1
-          ? 'Selection Mode: Single'
-          : 'Selection Mode: Multiple',
+          ? 'Mode de sélection : Unique'
+          : 'Mode de sélection : Multiple',
       )
       .setStyle(ButtonStyle.Success)
       .setDisabled(!selectMenu),
     new ButtonBuilder()
       .setCustomId('kaori:embedMaker-selectRole-sendComponent')
-      .setLabel('Add')
+      .setLabel('Ajouter')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(!selectMenu),
   );

@@ -13,11 +13,11 @@ import {
 export default new ChatInput(
   {
     name: 'ratelimit',
-    description: 'Set the slowmode for this channel',
+    description: 'Définir le mode lent pour ce salon',
     options: [
       {
         name: 'duration',
-        description: 'Duration in seconds',
+        description: 'Durée en secondes',
         minValue: 0,
         maxValue: 21600,
         type: ApplicationCommandOptionType.Integer,
@@ -34,21 +34,21 @@ export default new ChatInput(
     if (!interaction.appPermissions?.has(PermissionFlagsBits.ManageChannels))
       return interaction.reply({
         content: permissionField(permToText('ManageChannels'), {
-          label: 'BOT is missing the necessary permissions',
+          label: 'Le bot n’a pas les permissions nécessaires',
         }),
         ephemeral: true,
       });
 
     const duration = interaction.options.getInteger('duration', true);
     interaction.channel
-      .setRateLimitPerUser(duration, `/ratelimit by ${interaction.user.tag}`)
+      .setRateLimitPerUser(duration, `/ratelimit par ${interaction.user.tag}`)
       .then(() => {
         interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `${inlineCode('✅')} Set the channel slowmode to ${inlineCode(
-                  `${duration} seconds`,
+                `${inlineCode('✅')} Le mode lent du salon a été défini à ${inlineCode(
+                  `${duration} secondes`,
                 )}`,
               )
               .setColor(Colors.Green),
@@ -61,7 +61,7 @@ export default new ChatInput(
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `${inlineCode('❌')} Failed to set the slowmode`,
+                `${inlineCode('❌')} Échec de la définition du mode lent`,
               )
               .setColor(Colors.Red),
           ],

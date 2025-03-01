@@ -7,12 +7,12 @@ const button = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-exportModal')
-        .setTitle('Export')
+        .setTitle('Exporter')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('fileName')
-              .setLabel('File Name (Cannot use Japanese characters)')
+              .setLabel('Nom du fichier (ne pas utiliser de caractères japonais)')
               .setMaxLength(100)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -32,11 +32,11 @@ const modal = new Modal(
 
     interaction
       .followUp({
-        content: '`✅` The current embed has been exported. You can load it using `/embed import`.',
+        content: '`✅` L’embed actuel a été exporté. Vous pouvez le charger avec `/embed import`.',
         files: [new AttachmentBuilder(Buffer.from(JSON.stringify(interaction.message.embeds, null, 2)), { name: `${fileName}.json` })],
       })
       .catch(() => {
-        interaction.followUp({ content: '`❌` There was an issue while exporting.', ephemeral: true });
+        interaction.followUp({ content: '`❌` Un problème est survenu lors de l’exportation.', ephemeral: true });
       });
   },
 );

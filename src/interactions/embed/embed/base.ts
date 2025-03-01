@@ -20,12 +20,12 @@ const button = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-baseModal')
-        .setTitle('Title, Description, and Color')
+        .setTitle('Titre, Description et Couleur')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('title')
-              .setLabel('Title')
+              .setLabel('Titre')
               .setValue(embed.title || '')
               .setMaxLength(256)
               .setStyle(TextInputStyle.Short)
@@ -34,9 +34,9 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('url')
-              .setLabel('Title URL')
+              .setLabel('URL du titre')
               .setValue(embed.url || '')
-              .setPlaceholder(`Example: ${document}`)
+              .setPlaceholder(`Exemple : ${document}`)
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
           ),
@@ -52,9 +52,9 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('color')
-              .setLabel('Color Code (or Color Name)')
+              .setLabel('Code couleur (ou nom de la couleur)')
               .setValue(embed.hexColor || '')
-              .setPlaceholder('Example: #ffffff, Red')
+              .setPlaceholder('Exemple : #ffffff, Rouge')
               .setStyle(TextInputStyle.Short),
           ),
         ),
@@ -76,7 +76,7 @@ const modal = new Modal(
     if (url && !isURL(url))
       return interaction.reply({
         content:
-          '`❌` Please enter a URL starting with `http://` or `https://`.',
+          '`❌` Veuillez entrer une URL commençant par `http://` ou `https://`.',
         ephemeral: true,
       });
 
@@ -85,7 +85,7 @@ const modal = new Modal(
     } catch {
       return interaction.reply({
         content:
-          '`❌` Invalid color code or color name entered. Please refer to [this page](https://docs.nonick-js.com/nonick.js/features/embed/) for the correct values.',
+          '`❌` Code couleur ou nom de couleur invalide. Veuillez consulter [cette page](https://docs.nonick-js.com/nonick.js/features/embed/) pour les valeurs correctes.',
         ephemeral: true,
       });
     }

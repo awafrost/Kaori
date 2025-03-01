@@ -13,7 +13,7 @@ const button = new Button(
     )
       return interaction.reply({
         content:
-          '`❌` You need to give the bot `Manage Webhooks` permission to use this feature.',
+          '`❌` Vous devez donner au bot la permission `Gérer les webhooks` pour utiliser cette fonctionnalité.',
         ephemeral: true,
       });
 
@@ -26,28 +26,28 @@ const button = new Button(
 
     if (!targetMessage)
       return interaction.reply({
-        content: '`❌` There was an issue fetching the message.',
+        content: '`❌` Un problème est survenu lors de la récupération du message.',
         ephemeral: true,
       });
 
     const webhook = await targetMessage.fetchWebhook().catch(() => null);
     if (!webhook || interaction.client.user.id !== webhook.owner?.id)
       return interaction.reply({
-        content: '`❌` This message cannot be updated.',
+        content: '`❌` Ce message ne peut pas être mis à jour.',
         ephemeral: true,
       });
 
     await interaction.update({
-      content: '`⌛` Deleting components...',
+      content: '`⌛` Suppression des composants en cours...',
       embeds: [],
       components: [],
     });
 
     webhook
       .editMessage(targetMessage, { components: [] })
-      .then(() => interaction.editReply('`✅` Components have been deleted.'))
+      .then(() => interaction.editReply('`✅` Les composants ont été supprimés.'))
       .catch(() =>
-        interaction.editReply('`❌` Failed to delete components.'),
+        interaction.editReply('`❌` Échec de la suppression des composants.'),
       );
   },
 );

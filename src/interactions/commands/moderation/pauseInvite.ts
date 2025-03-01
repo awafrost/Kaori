@@ -13,11 +13,11 @@ import {
 export default new ChatInput(
   {
     name: 'pauseinvite',
-    description: 'Toggle the server invite pause state',
+    description: 'Activer ou désactiver la pause des invitations du serveur',
     options: [
       {
         name: 'pause',
-        description: 'Whether to pause the invites',
+        description: 'Mettre les invitations en pause ou non',
         type: ApplicationCommandOptionType.Boolean,
         required: true,
       },
@@ -34,7 +34,7 @@ export default new ChatInput(
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setDescription(`${inlineCode('❌')} Already in that state`)
+            .setDescription(`${inlineCode('❌')} Déjà dans cet état`)
             .setColor(Colors.Red),
         ],
         ephemeral: true,
@@ -45,13 +45,13 @@ export default new ChatInput(
         pause
           ? {
               features: [...guildFeatures, GuildFeature.InvitesDisabled],
-              reason: `Pausing invites - ${interaction.user.tag}`,
+              reason: `Mise en pause des invitations - ${interaction.user.tag}`,
             }
           : {
               features: guildFeatures.filter(
                 (v) => v !== GuildFeature.InvitesDisabled,
               ),
-              reason: `Enabling invites - ${interaction.user.tag}`,
+              reason: `Activation des invitations - ${interaction.user.tag}`,
             },
       )
       .then(() => {
@@ -59,8 +59,8 @@ export default new ChatInput(
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `${inlineCode('✅')} The server invites have been ${
-                  pause ? 'paused' : 'enabled'
+                `${inlineCode('✅')} Les invitations du serveur ont été ${
+                  pause ? 'mises en pause' : 'activées'
                 }`,
               )
               .setColor(Colors.Green),
@@ -74,7 +74,7 @@ export default new ChatInput(
             new EmbedBuilder()
               .setDescription(
                 [
-                  `${inlineCode('❌')} Failed to change invite pause state`,
+                  `${inlineCode('❌')} Échec de la modification de l’état des invitations`,
                   codeBlock(err),
                 ].join('\n'),
               )

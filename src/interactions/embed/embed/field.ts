@@ -22,28 +22,28 @@ const addField = [
       interaction.showModal(
         new ModalBuilder()
           .setCustomId('kaori:embedMaker-addFieldModal')
-          .setTitle('Add Field')
+          .setTitle('Ajouter un champ')
           .setComponents(
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('name')
-                .setLabel('Field Name')
+                .setLabel('Nom du champ')
                 .setMaxLength(256)
                 .setStyle(TextInputStyle.Short),
             ),
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('value')
-                .setLabel('Field Value')
+                .setLabel('Valeur du champ')
                 .setMaxLength(1024)
                 .setStyle(TextInputStyle.Paragraph),
             ),
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('inline')
-                .setLabel('Inline Display')
+                .setLabel('Affichage en ligne')
                 .setMaxLength(5)
-                .setPlaceholder('Set to "true" for ON, "false" for OFF')
+                .setPlaceholder('Mettre "true" pour OUI, "false" pour NON')
                 .setStyle(TextInputStyle.Short),
             ),
           ),
@@ -62,7 +62,7 @@ const addField = [
 
       if (!['true', 'false'].includes(inline))
         return interaction.reply({
-          content: '`❌` The `inline` value must be `true` or `false`.',
+          content: '`❌` La valeur de `inline` doit être `true` ou `false`.',
           ephemeral: true,
         });
 
@@ -100,7 +100,7 @@ const removeField = [
           new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
             new StringSelectMenuBuilder()
               .setCustomId(indexSelectCustomId)
-              .setPlaceholder('Select the field to delete')
+              .setPlaceholder('Sélectionnez le champ à supprimer')
               .setOptions(
                 ...embed.fields.map((v, index) => ({
                   label: omitString(v.name, 100),
@@ -113,7 +113,7 @@ const removeField = [
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId(backButtonCustomId)
-              .setLabel('Go Back Without Deleting')
+              .setLabel('Revenir sans supprimer')
               .setEmoji(white.reply)
               .setStyle(ButtonStyle.Danger),
           ),

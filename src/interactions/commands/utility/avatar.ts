@@ -4,25 +4,25 @@ import { ApplicationCommandOptionType, EmbedBuilder, Colors } from 'discord.js';
 export default new ChatInput(
   {
     name: 'avatar',
-    description: 'View a user’s avatar',
+    description: 'Voir l’avatar d’un utilisateur',
     options: [
       {
         name: 'user',
-        description: 'User to view avatar of',
+        description: 'Utilisateur dont voir l’avatar',
         type: ApplicationCommandOptionType.User,
         required: false,
       },
     ],
   },
   (interaction) => {
-    // If no user is specified, use the interaction's user
+    // Si aucun utilisateur n’est spécifié, utiliser l’utilisateur de l’interaction
     const user = interaction.options.getUser('user') || interaction.user;
 
     const embed = new EmbedBuilder()
-      .setTitle(`${user.tag}'s Avatar`)
+      .setTitle(`Avatar de ${user.tag}`)
       .setImage(user.displayAvatarURL({ size: 1024 }))
       .setColor(Colors.Blurple);
 
     interaction.reply({ embeds: [embed] });
   },
-)
+);

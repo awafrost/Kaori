@@ -17,12 +17,12 @@ const button = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:embedMaker-authorModal')
-        .setTitle('Header')
+        .setTitle('En-tête')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('name')
-              .setLabel('Name')
+              .setLabel('Nom')
               .setMaxLength(256)
               .setValue(embed.author?.name || '')
               .setStyle(TextInputStyle.Short)
@@ -31,7 +31,7 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('url')
-              .setLabel('URL for the Name')
+              .setLabel('URL pour le nom')
               .setMaxLength(1000)
               .setValue(embed.author?.url || '')
               .setStyle(TextInputStyle.Short)
@@ -40,7 +40,7 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('iconURL')
-              .setLabel('Icon URL')
+              .setLabel('URL de l’icône')
               .setMaxLength(1000)
               .setValue(embed.author?.iconURL || '')
               .setStyle(TextInputStyle.Short)
@@ -65,13 +65,13 @@ const modal = new Modal(
     if (!name && (url || iconURL))
       return interaction.reply({
         content:
-          '`❌` To add an icon URL or a URL for the name, you must also enter a "Name" option.',
+          '`❌` Pour ajouter une URL d’icône ou une URL pour le nom, vous devez également saisir une option "Nom".',
         ephemeral: true,
       });
     if ((url && !isURL(url)) || (iconURL && !isURL(iconURL)))
       return interaction.reply({
         content:
-          '`❌` Please enter a URL starting with `http://` or `https://`.',
+          '`❌` Veuillez entrer une URL commençant par `http://` ou `https://`.',
         ephemeral: true,
       });
 

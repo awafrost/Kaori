@@ -30,12 +30,12 @@ export function getBaseEmbedMakerButtons(embed: APIEmbed | Embed) {
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('kaori:embedMaker-author')
-        .setLabel('Header')
+        .setLabel('En-tête')
         .setEmoji(white.member)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('kaori:embedMaker-footer')
-        .setLabel('Footer')
+        .setLabel('Pied de page')
         .setEmoji(white.member)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
@@ -47,13 +47,13 @@ export function getBaseEmbedMakerButtons(embed: APIEmbed | Embed) {
     new ActionRowBuilder<ButtonBuilder>().setComponents(
       new ButtonBuilder()
         .setCustomId('kaori:embedMaker-addField')
-        .setLabel('Field')
+        .setLabel('Champ')
         .setEmoji(white.addMark)
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(embed.fields?.length === 25),
       new ButtonBuilder()
         .setCustomId('kaori:embedMaker-removeField')
-        .setLabel('Field')
+        .setLabel('Champ')
         .setEmoji(white.removeMark)
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!embed.fields?.length),
@@ -76,7 +76,7 @@ export function getEmbedMakerButtons(
       actionRows[1].addComponents(
         new ButtonBuilder()
           .setCustomId('kaori:embedMaker-send')
-          .setLabel('Send')
+          .setLabel('Envoyer')
           .setStyle(ButtonStyle.Primary),
       );
       break;
@@ -85,7 +85,7 @@ export function getEmbedMakerButtons(
       actionRows[1].addComponents(
         new ButtonBuilder()
           .setCustomId('kaori:embedMaker-edit')
-          .setLabel('Edit')
+          .setLabel('Modifier')
           .setStyle(ButtonStyle.Primary),
       );
       break;
@@ -116,7 +116,7 @@ export function reloadEmbedMaker(
 
   interaction.update({ embeds: [embed], components }).catch((e) =>
     interaction.reply({
-      content: `\`❌\` Failed to update the embed.\n\`${e}\``,
+      content: `\`❌\` Échec de la mise à jour de l’embed.\n\`${e}\``,
     }),
   );
 }

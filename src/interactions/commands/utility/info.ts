@@ -26,24 +26,24 @@ import type {
 } from 'discord.js';
 
 const featureTexts: Partial<Record<GuildFeature, string>> = {
-  [GuildFeature.Partnered]: 'Partnered Server',
-  [GuildFeature.Verified]: 'Verified Server',
-  [GuildFeature.Discoverable]: 'Discoverable Server',
+  [GuildFeature.Partnered]: 'Serveur partenaire',
+  [GuildFeature.Verified]: 'Serveur vérifié',
+  [GuildFeature.Discoverable]: 'Serveur découvrable',
 };
 
 const command = new ChatInput(
   {
     name: 'info',
-    description: 'Info command',
+    description: 'Commande d’information',
     options: [
       {
         name: 'user',
-        description: 'User information',
+        description: 'Informations sur un utilisateur',
         type: ApplicationCommandOptionType.Subcommand,
         options: [
           {
             name: 'user',
-            description: 'User',
+            description: 'Utilisateur',
             type: ApplicationCommandOptionType.User,
             required: true,
           },
@@ -51,7 +51,7 @@ const command = new ChatInput(
       },
       {
         name: 'server',
-        description: 'Server information',
+        description: 'Informations sur le serveur',
         type: ApplicationCommandOptionType.Subcommand,
       },
     ],
@@ -79,31 +79,31 @@ const command = new ChatInput(
             .setTitle(interaction.guild.name)
             .setDescription(
               [
-                idField(interaction.guild.id, { label: 'Server ID' }),
+                idField(interaction.guild.id, { label: 'ID du serveur' }),
                 userField(
                   await interaction.guild.fetchOwner().then((v) => v.user),
-                  { label: 'Owner' },
+                  { label: 'Propriétaire' },
                 ),
                 countField(interaction.guild.memberCount, {
                   emoji: 'member',
                   color: 'white',
-                  label: 'Member Count',
+                  label: 'Nombre de membres',
                 }),
                 countField(
                   interaction.guild.channels.channelCountWithoutThreads,
                   {
                     emoji: 'channel',
                     color: 'white',
-                    label: 'Channel Count',
+                    label: 'Nombre de salons',
                   },
                 ),
                 scheduleField(interaction.guild.createdAt, {
-                  label: 'Server Creation Date',
+                  label: 'Date de création du serveur',
                 }),
                 countField(interaction.guild.premiumSubscriptionCount ?? 0, {
                   emoji: 'boost',
                   color: 'white',
-                  label: 'Boost Count',
+                  label: 'Nombre de boosts',
                 }),
               ].join('\n'),
             )
@@ -111,19 +111,11 @@ const command = new ChatInput(
             .setThumbnail(interaction.guild.iconURL())
             .setFields(
               {
-                name: 'Status',
+                name: 'Statut',
                 value:
                   interaction.guild.features
                     .flatMap((feature) => featureTexts[feature] ?? [])
-                    .join('\n') || 'None',
-              },
-              {
-                name: 'Roles',
-                value: interaction.member.permissions.has(
-                  PermissionFlagsBits.ManageRoles,
-                )
-                  ? roleList(interaction.guild.roles)
-                  : permissionField(permToText('ManageRoles')),
+                    .join('\n') || 'Aucun',
               },
             ),
         ],
@@ -134,7 +126,7 @@ const command = new ChatInput(
 
 const context = new UserContext(
   {
-    name: 'User Information',
+    name: 'Informations sur l’utilisateur',
     dmPermission: false,
   },
   async (interaction) => {
@@ -167,7 +159,7 @@ async function createUserInfo(
 
   const embed = new EmbedBuilder()
     .setAuthor({ name: user.tag })
-    .setTitle(member ? null : 'This user is not in this server')
+    .setTitle(member ? null : 'Cet utilisateur n’est pas sur ce serveur')
     .setDescription(
       [member ? nicknameField(member) : '', idField(user.id)]
         .filter(Boolean)
@@ -177,13 +169,13 @@ async function createUserInfo(
     .setThumbnail(userAvatar)
     .setFields(
       {
-        name: 'Account Creation Date',
+        name: 'Date de création du compte',
         value: time(user.createdAt, 'D'),
         inline: true,
       },
       {
         name: 'Badges',
-        value: userFlags?.join(' ') || 'None',
+        value: userFlags?.join(' ') || 'Aucun',
         inline: true,
       },
     );
@@ -191,18 +183,18 @@ async function createUserInfo(
   if (!member) return embed;
   embed
     .spliceFields(1, 0, {
-      name: 'Server Join Date',
-      value: member.joinedAt ? time(member.joinedAt, 'D') : 'Error',
+      name: 'Date d’arrivée sur le serveur',
+      value: member.joinedAt ? time(member.joinedAt, 'D') : 'Erreur',
       inline: true,
     })
     .addFields({
-      name: 'Roles',
+      name: 'Rôles',
       value: roleList(member.roles),
     });
 
   if (member.premiumSince) {
     embed.addFields({
-      name: 'Boost Start Date',
+      name: 'Début du boost',
       value: `${time(member.premiumSince, 'D')} (${time(
         member.premiumSince,
         'R',
@@ -215,7 +207,7 @@ async function createUserInfo(
     interaction.member.permissions.has(PermissionFlagsBits.ModerateMembers)
   ) {
     embed.addFields({
-      name: 'Timeout Removal Date',
+      name: 'Date de fin d’isolement',
       value: `${time(member.communicationDisabledUntil, 'D')} (${time(
         member.communicationDisabledUntil,
         'R',
@@ -238,6 +230,6 @@ function roleList(roles: RoleManager | GuildMemberRoleManager) {
       .filter((role) => role.id !== role.guild.id)
       .sort((a, b) => b.position - a.position)
       .map((role) => role.toString())
-      .join(' ') || 'None'
+      .join(' ') || 'Aucun'
   );
 }

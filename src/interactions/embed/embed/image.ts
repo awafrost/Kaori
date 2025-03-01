@@ -22,9 +22,9 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('thumbnailUrl')
-              .setLabel('Thumbnail (URL)')
+              .setLabel('Miniature (URL)')
               .setMaxLength(1000)
-              .setPlaceholder('The specified image will be displayed in the top-right corner')
+              .setPlaceholder('L’image spécifiée sera affichée dans le coin supérieur droit')
               .setValue(embed.thumbnail?.url || '')
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -32,9 +32,9 @@ const button = new Button(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId('imageUrl')
-              .setLabel('Image inside embed (URL)')
+              .setLabel('Image dans l’embed (URL)')
               .setMaxLength(1000)
-              .setPlaceholder('The specified image will be displayed at the bottom')
+              .setPlaceholder('L’image spécifiée sera affichée en bas')
               .setValue(embed.image?.url || '')
               .setStyle(TextInputStyle.Short)
               .setRequired(false),
@@ -58,7 +58,7 @@ const modal = new Modal(
     )
       return interaction.reply({
         content:
-          '`❌` Please enter a URL starting with `http://` or `https://`.',
+          '`❌` Veuillez entrer une URL commençant par `http://` ou `https://`.',
         ephemeral: true,
       });
 

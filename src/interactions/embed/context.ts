@@ -19,7 +19,7 @@ import { getRoleSelectMakerButtons } from './roleSelect/_function';
 
 const context = new MessageContext(
   {
-    name: 'Edit Embed',
+    name: 'Modifier l’embed',
     defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
     dmPermission: false,
   },
@@ -27,7 +27,7 @@ const context = new MessageContext(
     if (!interaction.appPermissions?.has(PermissionFlagsBits.ManageWebhooks))
       return interaction.reply({
         content:
-          '`❌` To use this feature, the bot needs to have the `Manage Webhooks` permission.',
+          '`❌` Pour utiliser cette fonctionnalité, le bot doit avoir la permission `Gérer les webhooks`.',
         ephemeral: true,
       });
 
@@ -37,19 +37,19 @@ const context = new MessageContext(
     if (!webhook || !interaction.client.user.equals(webhook.owner as User))
       return interaction.reply({
         content:
-          '`❌` Only embeds posted using Kaori and with an active webhook can be edited.',
+          '`❌` Seuls les embeds envoyés par Kaori avec un webhook actif peuvent être modifiés.',
         ephemeral: true,
       });
 
     interaction.reply({
       embeds: [
         new EmbedBuilder()
-          .setTitle('`🧰` Edit and Expand Embeds')
+          .setTitle('`🧰` Modifier et enrichir les embeds')
           .setDescription(
-            'You can edit the embed or add URL buttons, role assignment buttons, and select menus.',
+            'Vous pouvez modifier l’embed ou ajouter des boutons URL, des boutons d’attribution de rôles et des menus déroulants.',
           )
           .setColor(Colors.Blurple)
-          .setFooter({ text: `Message ID: ${interaction.targetId}` }),
+          .setFooter({ text: `ID du message : ${interaction.targetId}` }),
       ],
       components: [
         new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
@@ -57,26 +57,26 @@ const context = new MessageContext(
             .setCustomId('kaori:embedMaker-editEmbedPanel')
             .setOptions(
               {
-                label: 'Edit Embed',
+                label: 'Modifier l’embed',
                 value: 'editEmbed',
                 emoji: white.pencil,
               },
               {
-                label: 'Add Role Assign (Select Menu)',
+                label: 'Ajouter un rôle (menu déroulant)',
                 value: 'addRoleSelect',
                 emoji: white.role2,
               },
               {
-                label: 'Add Role Assign (Button)',
+                label: 'Ajouter un rôle (bouton)',
                 value: 'addRoleButton',
                 emoji: white.role2,
               },
               {
-                label: 'Add URL Button',
+                label: 'Ajouter un bouton URL',
                 value: 'addUrlButton',
                 emoji: white.link,
               },
-              { label: 'Delete Component', value: 'delete', emoji: '🗑' },
+              { label: 'Supprimer un composant', value: 'delete', emoji: '🗑' },
             ),
         ),
       ],
@@ -100,14 +100,14 @@ const select = new SelectMenu(
 
     if (!targetMessage)
       return interaction.update({
-        content: '`❌` There was an issue while fetching the message.',
+        content: '`❌` Un problème est survenu lors de la récupération du message.',
         embeds: [],
         components: [],
       });
 
     if (interaction.values[0] === 'editEmbed')
       interaction.update({
-        content: `Message ID: ${targetId}`,
+        content: `ID du message : ${targetId}`,
         embeds: targetMessage.embeds,
         components: getEmbedMakerButtons(
           targetMessage.embeds[0],
@@ -117,16 +117,16 @@ const select = new SelectMenu(
     else if (interaction.values[0] === 'addRoleSelect') {
       if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles))
         return interaction.reply({
-          content: '`❌` You do not have permission to use this feature.',
+          content: '`❌` Vous n’avez pas la permission d’utiliser cette fonctionnalité.',
           ephemeral: true,
         });
 
       interaction.update({
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .setTitle('`🧰` Add Role Assign (Select Menu)')
+            .setTitle('`🧰` Ajouter un rôle (menu déroulant)')
             .setDescription(
-              'Use the buttons below to create a select menu and add it to the message with the "Add" button. (Up to 5 items)',
+              'Utilisez les boutons ci-dessous pour créer un menu déroulant et l’ajouter au message avec le bouton "Ajouter". (Jusqu’à 5 éléments)',
             ),
         ],
         components: [getRoleSelectMakerButtons()],
@@ -134,28 +134,28 @@ const select = new SelectMenu(
     } else if (interaction.values[0] === 'addRoleButton') {
       if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles))
         return interaction.reply({
-          content: '`❌` You do not have permission to use this feature.',
+          content: '`❌` Vous n’avez pas la permission d’utiliser cette fonctionnalité.',
           ephemeral: true,
         });
 
       interaction.update({
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .setTitle('`🧰` Add Role Assign (Button)')
+            .setTitle('`🧰` Ajouter un rôle (bouton)')
             .setDescription(
-              'Use the "Create Button" button to add a button to the message. (Up to 25 items)',
+              'Utilisez le bouton "Créer un bouton" pour ajouter un bouton au message. (Jusqu’à 25 éléments)',
             ),
         ],
         components: [
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:embedMaker-roleButton-send')
-              .setLabel('Create Button')
+              .setLabel('Créer un bouton')
               .setEmoji(white.addMark)
               .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
               .setCustomId('kaori:embedMaker-roleButton-changeStyle')
-              .setLabel('Color')
+              .setLabel('Couleur')
               .setEmoji('🎨')
               .setStyle(ButtonStyle.Primary),
           ),
@@ -165,16 +165,16 @@ const select = new SelectMenu(
       interaction.update({
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .setTitle('Add URL Button')
+            .setTitle('Ajouter un bouton URL')
             .setDescription(
-              'Use the "Create Button" button to add a button to the message. (Up to 25 items)',
+              'Utilisez le bouton "Créer un bouton" pour ajouter un bouton au message. (Jusqu’à 25 éléments)',
             ),
         ],
         components: [
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:embedMaker-linkButton-send')
-              .setLabel('Create Button')
+              .setLabel('Créer un bouton')
               .setEmoji(white.addMark)
               .setStyle(ButtonStyle.Secondary),
           ),
@@ -183,16 +183,16 @@ const select = new SelectMenu(
     else if (interaction.values[0] === 'delete') {
       if (targetMessage.components.length === 0)
         return interaction.reply({
-          content: '`❌` No components have been added.',
+          content: '`❌` Aucun composant n’a été ajouté.',
           ephemeral: true,
         });
 
       interaction.update({
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .setTitle('`🧰` Delete Component')
+            .setTitle('`🧰` Supprimer un composant')
             .setDescription(
-              'Use the select menu below to choose which component to delete.',
+              'Utilisez le menu déroulant ci-dessous pour choisir quel composant supprimer.',
             ),
         ],
         components: [
@@ -201,7 +201,7 @@ const select = new SelectMenu(
               .setCustomId('kaori:manageComponents-delete')
               .setOptions(
                 targetMessage.components.map((v, index) => ({
-                  label: `${index + 1} Line`,
+                  label: `Ligne ${index + 1}`,
                   value: String(index),
                 })),
               )
@@ -210,7 +210,7 @@ const select = new SelectMenu(
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:manageComponents-deleteAll')
-              .setLabel('Delete All Components')
+              .setLabel('Supprimer tous les composants')
               .setEmoji('🗑')
               .setStyle(ButtonStyle.Danger),
           ),

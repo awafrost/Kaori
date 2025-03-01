@@ -18,7 +18,7 @@ import {
 
 const userContext = new UserContext(
   {
-    name: 'Report User',
+    name: 'Signaler un utilisateur',
     dmPermission: false,
   },
   async (interaction) => {
@@ -31,12 +31,12 @@ const userContext = new UserContext(
     if (!setting?.channel) {
       if (interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
         return interaction.reply({
-          content: `\`❌\` To use this feature, please configure ${hyperlink('a channel to receive reports', `<${dashboard}/guilds/${interaction.guild.id}/report>`)} on the dashboard.`,
+          content: `\`❌\` Pour utiliser cette fonctionnalité, veuillez configurer ${hyperlink('un salon pour recevoir les signalements', `<${dashboard}/guilds/${interaction.guild.id}/report>`)} sur le tableau de bord.`,
           ephemeral: true,
         });
       }
       return interaction.reply({
-        content: '`❌` This feature is currently unavailable. Please contact the server administrator.',
+        content: '`❌` Cette fonctionnalité est actuellement indisponible. Veuillez contacter l’administrateur du serveur.',
         ephemeral: true,
       });
     }
@@ -45,14 +45,14 @@ const userContext = new UserContext(
 
     if (user.system || user.equals(interaction.client.user)) {
       return interaction.reply({
-        content: '`❌` You cannot report this user.',
+        content: '`❌` Vous ne pouvez pas signaler cet utilisateur.',
         ephemeral: true,
       });
     }
 
     if (user.equals(interaction.user)) {
       return interaction.reply({
-        content: '`❌` You are attempting to report yourself.',
+        content: '`❌` Vous essayez de vous signaler vous-même.',
         ephemeral: true,
       });
     }
@@ -60,14 +60,14 @@ const userContext = new UserContext(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:userReportModal')
-        .setTitle('Report User')
+        .setTitle('Signaler un utilisateur')
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().setComponents(
             new TextInputBuilder()
               .setCustomId(interaction.targetId)
-              .setLabel('Details')
+              .setLabel('Détails')
               .setPlaceholder(
-                'Reports submitted here are visible by admins.',
+                'Les signalements soumis ici sont visibles par les administrateurs.',
               )
               .setMaxLength(1500)
               .setStyle(TextInputStyle.Paragraph),
@@ -89,7 +89,7 @@ const userReportModal = new Modal(
     });
     if (!setting?.channel) {
       return interaction.reply({
-        content: '`❌` An error occurred while sending the report.',
+        content: '`❌` Une erreur est survenue lors de l’envoi du signalement.',
         ephemeral: true,
       });
     }
@@ -103,7 +103,7 @@ const userReportModal = new Modal(
 
     if (!(target && channel?.isTextBased()))
       return interaction.reply({
-        content: '`❌` An error occurred while sending the report.',
+        content: '`❌` Une erreur est survenue lors de l’envoi du signalement.',
         ephemeral: true,
       });
 
@@ -114,28 +114,28 @@ const userReportModal = new Modal(
           : undefined,
         embeds: [
           new EmbedBuilder()
-            .setTitle('`📢` User Report')
+            .setTitle('`📢` Signalement d’utilisateur')
             .setDescription(
               [
                 userField(target, {
                   emoji: 'edit',
                   color: 'gray',
-                  label: 'Reported User',
+                  label: 'Utilisateur signalé',
                 }),
                 scheduleField(target.createdAt, {
-                  label: 'Account Creation Date',
+                  label: 'Date de création du compte',
                 }),
                 '',
                 userField(interaction.user, {
                   color: 'blurple',
-                  label: 'Reporter',
+                  label: 'Signaleur',
                 }),
               ].join('\n'),
             )
             .setColor(Colors.DarkButNotBlack)
             .setThumbnail(target.displayAvatarURL())
             .setFields({
-              name: 'Reason',
+              name: 'Raison',
               value: interaction.components[0].components[0].value,
             }),
         ],
@@ -143,23 +143,23 @@ const userReportModal = new Modal(
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId('kaori:report-consider')
-              .setLabel('Take Action')
+              .setLabel('Prendre des mesures')
               .setStyle(ButtonStyle.Primary),
           ),
         ],
       })
       .then((message) => {
         interaction.reply({
-          content: '`✅` **Thank you for your report!** It has been sent to the server administrators.',
+          content: '`✅` **Merci pour votre signalement !** Il a été envoyé aux administrateurs du serveur.',
           ephemeral: true,
         });
         message
-          .startThread({ name: `Report on ${target.username}` })
+          .startThread({ name: `Signalement de ${target.username}` })
           .catch(() => {});
       })
       .catch(() =>
         interaction.reply({
-          content: '`❌` An error occurred while sending the report.',
+          content: '`❌` Une erreur est survenue lors de l’envoi du signalement.',
           ephemeral: true,
         }),
       );

@@ -12,17 +12,17 @@ import {
 export default new ChatInput(
   {
     name: 'firstmessage',
-    description: 'Send a button linking to the first message in the channel',
+    description: 'Envoyer un bouton menant au premier message du salon',
     options: [
       {
         name: 'content',
-        description: 'Message content',
+        description: 'Contenu du message',
         type: ApplicationCommandOptionType.String,
         maxLength: 200,
       },
       {
         name: 'label',
-        description: 'Button text',
+        description: 'Texte du bouton',
         type: ApplicationCommandOptionType.String,
         maxLength: 80,
       },
@@ -48,7 +48,7 @@ export default new ChatInput(
             new ActionRowBuilder<ButtonBuilder>().setComponents(
               new ButtonBuilder()
                 .setLabel(
-                  interaction.options.getString('label') ?? 'Go to top message',
+                  interaction.options.getString('label') ?? 'Aller au premier message',
                 )
                 .setURL(message.url)
                 .setStyle(ButtonStyle.Link),
@@ -58,7 +58,7 @@ export default new ChatInput(
       })
       .catch(() => {
         interaction.reply({
-          content: `${inlineCode('❌')} Failed to fetch the message`,
+          content: `${inlineCode('❌')} Échec de la récupération du message`,
           ephemeral: true,
         });
       });

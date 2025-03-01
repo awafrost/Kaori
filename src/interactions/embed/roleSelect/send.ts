@@ -17,7 +17,7 @@ const addRoleSelectButton = new Button(
       ComponentType.StringSelect
     )
       return interaction.reply({
-        content: '`❌` No select menu has been created!',
+        content: '`❌` Aucun menu déroulant n’a été créé !',
         ephemeral: true,
       });
     if (
@@ -27,7 +27,7 @@ const addRoleSelectButton = new Button(
     )
       return interaction.reply({
         content:
-          '`❌` To use this feature, the bot must have the `Manage Webhooks` permission.',
+          '`❌` Pour utiliser cette fonctionnalité, le bot doit avoir la permission `Gérer les webhooks`.',
         ephemeral: true,
       });
 
@@ -41,7 +41,7 @@ const addRoleSelectButton = new Button(
 
     if (!targetMessage)
       return interaction.reply({
-        content: '`❌` There was an issue fetching the message.',
+        content: '`❌` Un problème est survenu lors de la récupération du message.',
         ephemeral: true,
       });
 
@@ -50,12 +50,12 @@ const addRoleSelectButton = new Button(
 
     if (!webhook || interaction.client.user.id !== webhook.owner?.id)
       return interaction.reply({
-        content: '`❌` This message cannot be updated.',
+        content: '`❌` Ce message ne peut pas être mis à jour.',
         ephemeral: true,
       });
     if (targetMessage.components.length === 5)
       return interaction.reply({
-        content: '`❌` No more components can be added!',
+        content: '`❌` Aucun composant supplémentaire ne peut être ajouté !',
         ephemeral: true,
       });
     if (
@@ -63,14 +63,14 @@ const addRoleSelectButton = new Button(
     )
       return interaction.reply({
         content:
-          '`❌` Select menus and buttons cannot be added to the same message.',
+          '`❌` Les menus déroulants et les boutons ne peuvent pas être ajoutés au même message.',
         ephemeral: true,
       });
 
     const embeds = interaction.message.embeds;
     const components = interaction.message.components;
     await interaction.update({
-      content: '`⌛` Adding components...',
+      content: '`⌛` Ajout des composants en cours...',
       embeds: [],
       components: [],
     });
@@ -95,14 +95,14 @@ const addRoleSelectButton = new Button(
       })
       .then(() =>
         interaction.editReply({
-          content: '`✅` Components added successfully!',
+          content: '`✅` Composants ajoutés avec succès !',
           embeds,
           components: [getRoleSelectMakerButtons()],
         }),
       )
       .catch(() =>
         interaction.editReply({
-          content: '`❌` There was an issue updating the components.',
+          content: '`❌` Un problème est survenu lors de la mise à jour des composants.',
           embeds,
           components,
         }),

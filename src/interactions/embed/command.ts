@@ -15,37 +15,37 @@ import { embedMakerType, getEmbedMakerButtons } from './embed/_function';
 const command = new ChatInput(
   {
     name: 'embed',
-    description: 'Create an embed',
+    description: 'Créer un embed',
     options: [
       {
         name: 'create',
-        description: 'Create a new embed',
+        description: 'Créer un nouvel embed',
         options: [
           {
             name: 'title',
-            description: 'The title of the embed',
+            description: 'Le titre de l’embed',
             maxLength: 256,
             type: ApplicationCommandOptionType.String,
           },
           {
             name: 'description',
-            description: 'Description displayed in the embed (use two spaces for line breaks)',
+            description: 'Description affichée dans l’embed (utilisez deux espaces pour un saut de ligne)',
             maxLength: 4096,
             type: ApplicationCommandOptionType.String,
           },
           {
             name: 'color',
-            description: 'Color of the embed',
+            description: 'Couleur de l’embed',
             type: ApplicationCommandOptionType.Number,
             choices: [
-              { name: '🔴Red', value: Colors.Red },
+              { name: '🔴Rouge', value: Colors.Red },
               { name: '🟠Orange', value: Colors.Orange },
-              { name: '🟡Yellow', value: Colors.Yellow },
-              { name: '🟢Green', value: Colors.Green },
-              { name: '🔵Blue', value: Colors.Blue },
-              { name: '🟣Purple', value: Colors.Purple },
-              { name: '⚪White', value: Colors.White },
-              { name: '⚫Black', value: Colors.DarkButNotBlack },
+              { name: '🟡Jaune', value: Colors.Yellow },
+              { name: '🟢Vert', value: Colors.Green },
+              { name: '🔵Bleu', value: Colors.Blue },
+              { name: '🟣Violet', value: Colors.Purple },
+              { name: '⚪Blanc', value: Colors.White },
+              { name: '⚫Noir', value: Colors.DarkButNotBlack },
             ],
           },
           {
@@ -58,11 +58,11 @@ const command = new ChatInput(
       },
       {
         name: 'import',
-        description: 'Create an embed from a json file',
+        description: 'Créer un embed à partir d’un fichier JSON',
         options: [
           {
             name: 'json',
-            description: 'json file',
+            description: 'Fichier JSON',
             type: ApplicationCommandOptionType.Attachment,
             required: true,
           },
@@ -71,11 +71,11 @@ const command = new ChatInput(
       },
       {
         name: 'profile',
-        description: 'Change the profile for sending embeds',
+        description: 'Modifier le profil pour l’envoi des embeds',
         options: [
           {
             name: 'name',
-            description: 'Name',
+            description: 'Nom',
             maxLength: 100,
             type: ApplicationCommandOptionType.String,
             required: true,
@@ -97,7 +97,7 @@ const command = new ChatInput(
 
     if (!interaction.channel?.isTextBased())
       return interaction.reply({
-        content: '`❌` This command cannot be used in this channel',
+        content: '`❌` Cette commande ne peut pas être utilisée dans ce salon.',
         ephemeral: true,
       });
 
@@ -110,7 +110,7 @@ const command = new ChatInput(
       if (!title && !description)
         return interaction.reply({
           content:
-            '`❌` You must provide at least one of `title` or `description`.',
+            '`❌` Vous devez fournir au moins un `titre` ou une `description`.',
           ephemeral: true,
         });
 
@@ -122,7 +122,7 @@ const command = new ChatInput(
 
       interaction.reply({
         content:
-          'You can change the sender\'s profile by using `/embed profile`.',
+          'Vous pouvez changer le profil de l’expéditeur en utilisant `/embed profile`.',
         embeds: [embed],
         components: getEmbedMakerButtons(embed.data, embedMakerType.send),
         ephemeral: true,
@@ -134,12 +134,12 @@ const command = new ChatInput(
 
       if (!attachment.contentType?.startsWith('application/json'))
         return interaction.reply({
-          content: '`❌` The attached file is not a json file.',
+          content: '`❌` Le fichier joint n’est pas un fichier JSON.',
           ephemeral: true,
         });
       if (attachment.size > 3000000)
         return interaction.reply({
-          content: '`❌` JSON files larger than 3MB cannot be imported.',
+          content: '`❌` Les fichiers JSON de plus de 3 Mo ne peuvent pas être importés.',
           ephemeral: true,
         });
 
@@ -150,14 +150,14 @@ const command = new ChatInput(
       interaction
         .followUp({
           content:
-            'You can change the sender\'s profile by using `/embed profile`.',
+            'Vous pouvez changer le profil de l’expéditeur en utilisant `/embed profile`.',
           embeds: embeds,
           components: getEmbedMakerButtons(embeds[0], embedMakerType.send),
         })
         .catch(() =>
           interaction.followUp({
             content:
-              '`❌` Import failed. Please check if the file is valid.',
+              '`❌` Échec de l’importation. Veuillez vérifier si le fichier est valide.',
             ephemeral: true,
           }),
         );
@@ -168,7 +168,7 @@ const command = new ChatInput(
       if (!interaction.appPermissions?.has(PermissionFlagsBits.ManageWebhooks))
         return interaction.reply({
           content:
-            '`❌` To use this feature, you must give Kaori the `Manage Webhooks` permission.',
+            '`❌` Pour utiliser cette fonctionnalité, vous devez donner à Kaori la permission `Gérer les webhooks`.',
           ephemeral: true,
         });
       if (
@@ -177,7 +177,7 @@ const command = new ChatInput(
           !['image/png', 'image/jpeg'].includes(avatar.contentType))
       )
         return interaction.reply({
-          content: '`❌` Only `jpeg` or `png` avatars are allowed.',
+          content: '`❌` Seuls les avatars au format `jpeg` ou `png` sont autorisés.',
           ephemeral: true,
         });
 
@@ -204,7 +204,7 @@ const command = new ChatInput(
 
       if (res instanceof Webhook)
         interaction.followUp({
-          content: '`✅` Profile updated!',
+          content: '`✅` Profil mis à jour !',
           embeds: [
             new EmbedBuilder()
               .setAuthor({
@@ -218,7 +218,7 @@ const command = new ChatInput(
         });
       else
         interaction.followUp({
-          content: '`❌` Failed to update profile.',
+          content: '`❌` Échec de la mise à jour du profil.',
           ephemeral: true,
         });
     }

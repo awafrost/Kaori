@@ -1,76 +1,76 @@
 import { ChatInput } from '@akki256/discord-interaction';
 import {
-  ApplicationCommandOptionType,
-  Colors,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  inlineCode,
+ ApplicationCommandOptionType,
+ Colors,
+ EmbedBuilder,
+ PermissionFlagsBits,
+ inlineCode,
 } from 'discord.js';
 
 export default new ChatInput(
-  {
-    name: 'ban',
-    description: 'Ban a user from the server and notify them via DM',
-    options: [
-      {
-        name: 'user',
-        description: 'User to ban',
-        type: ApplicationCommandOptionType.User,
-        required: true,
-      },
-      {
-        name: 'reason',
-        description: 'Reason for the ban',
-        type: ApplicationCommandOptionType.String,
-        required: false,
-      },
-    ],
-    defaultMemberPermissions: PermissionFlagsBits.BanMembers,
-    dmPermission: false,
-  },
-  async (interaction) => {
-    if (!interaction.inCachedGuild()) return;
+ {
+ name: 'ban',
+ description: 'Bannir un utilisateur du serveur et le notifier par message privé',
+ options: [
+ {
+ name: 'user',
+ description: 'Utilisateur à bannir',
+ type: ApplicationCommandOptionType.User,
+ required: true,
+ },
+ {
+ name: 'reason',
+ description: 'Raison du bannissement',
+ type: ApplicationCommandOptionType.String,
+ required: false,
+ },
+ ],
+ defaultMemberPermissions: PermissionFlagsBits.BanMembers,
+ dmPermission: false,
+ },
+ async (interaction) => {
+ if (!interaction.inCachedGuild()) return;
 
-    const user = interaction.options.getUser('user');
-    if (!user) {
-      return interaction.reply({ content: 'User not found', ephemeral: true });
-    }
+ const user = interaction.options.getUser('user');
+ if (!user) {
+ return interaction.reply({ content: 'Utilisateur non trouvé', ephemeral: true });
+ }
 
-    const reason = interaction.options.getString('reason') ?? 'No reason provided';
+ const reason = interaction.options.getString('reason') ?? 'Aucune raison fournie';
 
-    try {
-      // Envoi du DM avant le ban
-      await user.send({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(
-              `${inlineCode('❌')} You have been banned from **${interaction.guild.name}**`
-            )
-            .addFields({ name: 'Reason', value: reason })
-            .setColor(Colors.Red),
-        ],
-      }).catch(() => {
-        // Ignore si l'envoi échoue (DM désactivés ou autres restrictions)
-      });
+ try {
+ // Envoi du DM avant le ban
+ await user.send({
+ embeds: [
+ new EmbedBuilder()
+ .setDescription(
+ `${inlineCode('❌')} Vous avez été banni de **${interaction.guild.name}**`
+ )
+ .addFields({ name: 'Raison', value: reason })
+ .setColor(Colors.Red),
+ ],
+ }).catch(() => {
+ // Ignore si l'envoi échoue (DM désactivés ou autres restrictions)
+ });
 
-      // Bannir l'utilisateur
-      await interaction.guild.members.ban(user, { reason: `${reason} - ${interaction.user.tag}` });
+ // Bannir l'utilisateur
+ await interaction.guild.members.ban(user, { reason: `${reason} - ${interaction.user.tag}` });
 
-      // Confirmation publique
-      interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(`${inlineCode('✅')} ${user.tag} has been banned.`)
-            .addFields({ name: 'Reason', value: reason })
-            .setColor(Colors.Red),
-        ],
-      });
-    } catch (err) {
-      console.error('Ban Error:', err); // Pour déboguer
-      interaction.reply({
-        content: `${inlineCode('❌')} Failed to ban the user. Please check my permissions or the target's status.`,
-        ephemeral: true,
-      });
-    }
-  }
+ // Confirmation publique
+ interaction.reply({
+ embeds: [
+ new EmbedBuilder()
+ .setDescription(`${inlineCode('✅')} ${user.tag} a été banni.`)
+ .addFields({ name: 'Raison', value: reason })
+ .setColor(Colors.Red),
+ ],
+ });
+ } catch (err) {
+ console.error('Ban Error:', err); // Pour déboguer
+ interaction.reply({
+ content: `${inlineCode('❌')} Échec du bannissement de l'utilisateur. Veuillez vérifier mes permissions ou le statut de la cible.`,
+ ephemeral: true,
+ });
+ }
+ }
 );

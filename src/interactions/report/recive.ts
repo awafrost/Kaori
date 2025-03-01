@@ -26,7 +26,7 @@ const considerButton = new Button(
               `${embed.description}`,
               userField(interaction.user, {
                 color: 'blurple',
-                label: 'Handler',
+                label: 'Gestionnaire',
               }),
             ].join('\n'),
           )
@@ -36,11 +36,11 @@ const considerButton = new Button(
         new ActionRowBuilder<ButtonBuilder>().setComponents(
           new ButtonBuilder()
             .setCustomId('kaori:report-completed')
-            .setLabel('Mark as Resolved')
+            .setLabel('Marquer comme résolu')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('kaori:report-ignore')
-            .setLabel('Ignore')
+            .setLabel('Ignorer')
             .setStyle(ButtonStyle.Danger),
         ),
       ],
@@ -57,15 +57,15 @@ const actionButton = new Button(
     interaction.showModal(
       new ModalBuilder()
         .setCustomId('kaori:report-actionModal')
-        .setTitle(`${isCompleteButton ? 'Mark as Resolved' : 'Mark as Ignored'}`)
+        .setTitle(`${isCompleteButton ? 'Marquer comme résolu' : 'Marquer comme ignoré'}`)
         .setComponents(
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId(isCompleteButton ? 'action' : 'reason')
               .setLabel(
                 isCompleteButton
-                  ? 'Actions Taken / Punishment'
-                  : 'Reason for No Action',
+                  ? 'Mesures prises / Sanction'
+                  : 'Raison de l’inaction',
               )
               .setMaxLength(100)
               .setStyle(TextInputStyle.Short),
@@ -92,13 +92,13 @@ const actionModal = new Modal(
     await interaction.update({
       embeds: [
         EmbedBuilder.from(interaction.message.embeds[0])
-          .setTitle(`${embed.title} ${isAction ? '[Resolved]' : '[No Action]'}`)
+          .setTitle(`${embed.title} ${isAction ? '[Résolu]' : '[Aucune action]'}`)
           .setDescription(
             [
               `${embed.description}`,
               `${formatEmoji(blurple.admin)} **${
-                isAction ? 'Actions Taken' : 'Reason for No Action'
-              }:** ${categoryValue}`,
+                isAction ? 'Mesures prises' : 'Raison de l’inaction'
+              } :** ${categoryValue}`,
             ].join('\n'),
           )
           .setColor(isAction ? Colors.Green : Colors.Red),

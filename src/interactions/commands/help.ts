@@ -11,7 +11,7 @@ import {
 export default new ChatInput(
   {
     name: 'help',
-    description: 'Information about this BOT',
+    description: 'Informations sur Kaori',
   },
   async (interaction) => {
     const developer =
@@ -23,28 +23,28 @@ export default new ChatInput(
           .setTitle(interaction.client.user.username)
           .setDescription(
             [
-              '**Make your Discord server more convenient!**',
-              'We are continuously developing a "user-friendly multi-functional BOT".',
+              '**Rendez votre serveur Discord plus pratique !**',
+              'Nous développons continuellement un "BOT multifonctionnel convivial".',
             ].join('\n'),
           )
           .setColor(Colors.Blurple)
           .setFooter({
-            text: `Developer: @${developer.username}`,
+            text: `Développeur : @${developer.username}`,
             iconURL: developer.displayAvatarURL(),
           }),
       ],
       components: [
         new ActionRowBuilder<ButtonBuilder>().setComponents(
           new ButtonBuilder()
-            .setLabel('Support Server')
+            .setLabel('Serveur de support')
             .setStyle(ButtonStyle.Link)
             .setURL(supportServer),
           new ButtonBuilder()
-            .setLabel('User Guide')
+            .setLabel('Guide utilisateur')
             .setStyle(ButtonStyle.Link)
             .setURL(document),
           new ButtonBuilder()
-            .setLabel('Dashboard')
+            .setLabel('Tableau de bord')
             .setStyle(ButtonStyle.Link)
             .setURL(dashboard),
         ),

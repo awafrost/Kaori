@@ -10,11 +10,11 @@ import {
 export default new ChatInput(
   {
     name: 'unban',
-    description: 'Unban a user from the server',
+    description: 'Débannir un utilisateur du serveur',
     options: [
       {
         name: 'userid',
-        description: 'ID of the user to unban',
+        description: 'ID de l’utilisateur à débannir',
         type: ApplicationCommandOptionType.String,
         required: true,
       },
@@ -27,7 +27,7 @@ export default new ChatInput(
 
     const userId = interaction.options.getString('userid');
     if (!userId) {
-      return interaction.reply({ content: 'User ID is required', ephemeral: true });
+      return interaction.reply({ content: 'L’ID de l’utilisateur est requis', ephemeral: true });
     }
 
     try {
@@ -35,13 +35,13 @@ export default new ChatInput(
       interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setDescription(`${inlineCode('✅')} User with ID ${userId} has been unbanned`)
+            .setDescription(`${inlineCode('✅')} L’utilisateur avec l’ID ${userId} a été débanni`)
             .setColor(Colors.Green),
         ],
       });
     } catch (err) {
       interaction.reply({
-        content: `${inlineCode('❌')} Failed to unban user`,
+        content: `${inlineCode('❌')} Échec du débannissement de l’utilisateur`,
         ephemeral: true,
       });
     }

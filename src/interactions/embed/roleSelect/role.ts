@@ -33,20 +33,20 @@ const addRole = [
       interaction.showModal(
         new ModalBuilder()
           .setCustomId('kaori:embedMaker-selectRole-addRoleModal')
-          .setTitle('Add Role')
+          .setTitle('Ajouter un rôle')
           .setComponents(
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('roleNameOrId')
-                .setLabel('Role Name or ID')
+                .setLabel('Nom ou ID du rôle')
                 .setMaxLength(100)
                 .setStyle(TextInputStyle.Short),
             ),
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('displayName')
-                .setLabel('Display Name in Select Menu')
-                .setPlaceholder('e.g., Minecraft Player')
+                .setLabel('Nom affiché dans le menu déroulant')
+                .setPlaceholder('ex. : Joueur Minecraft')
                 .setMaxLength(100)
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false),
@@ -54,8 +54,8 @@ const addRole = [
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('description')
-                .setLabel('Description for the Role')
-                .setPlaceholder('e.g., Recommended for users playing Minecraft!')
+                .setLabel('Description du rôle')
+                .setPlaceholder('ex. : Recommandé pour les joueurs de Minecraft !')
                 .setMaxLength(100)
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false),
@@ -63,8 +63,8 @@ const addRole = [
             new ActionRowBuilder<TextInputBuilder>().setComponents(
               new TextInputBuilder()
                 .setCustomId('emojiNameOrId')
-                .setLabel('Unicode Emoji or Custom Emoji')
-                .setPlaceholder('One character only; Custom emoji by name or ID')
+                .setLabel('Emoji Unicode ou personnalisé')
+                .setPlaceholder('Un seul caractère ; Emoji perso par nom ou ID')
                 .setMaxLength(32)
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false),
@@ -101,13 +101,13 @@ const addRole = [
 
       if (!(role instanceof Role))
         return interaction.reply({
-          content: '`❌` No role matching the entered value was found.',
+          content: '`❌` Aucun rôle correspondant à la valeur saisie n’a été trouvé.',
           ephemeral: true,
         });
       if (role?.managed)
         return interaction.reply({
           content:
-            '`❌` The role is managed by an external service and cannot be added to the select menu.',
+            '`❌` Ce rôle est géré par un service externe et ne peut pas être ajouté au menu déroulant.',
           ephemeral: true,
         });
       if (
@@ -118,7 +118,7 @@ const addRole = [
       )
         return interaction.reply({
           content:
-            '`❌` You cannot add a role that is higher than your own highest role.',
+            '`❌` Vous ne pouvez pas ajouter un rôle supérieur à votre rôle le plus élevé.',
         });
 
       const newOption: APISelectMenuOption = {
@@ -177,9 +177,9 @@ const addRole = [
         interaction.followUp({
           embeds: [
             new EmbedBuilder()
-              .setTitle('`⚠️` Warning!')
+              .setTitle('`⚠️` Attention !')
               .setDescription(
-                `${role} has potentially dangerous permissions.\n> ${dangerPermissions.map((v) => `\`${v}\``).join(' ')}`,
+                `${role} possède des permissions potentiellement dangereuses.\n> ${dangerPermissions.map((v) => `\`${v}\``).join(' ')}`,
               )
               .setColor(Colors.Yellow),
           ],
@@ -212,7 +212,7 @@ const removeRole = [
           new ActionRowBuilder<StringSelectMenuBuilder>().setComponents(
             new StringSelectMenuBuilder()
               .setCustomId(indexSelectCustomId)
-              .setPlaceholder('Select item to remove')
+              .setPlaceholder('Sélectionner l’élément à supprimer')
               .setOptions(
                 ...select.options.map((v, index) => ({
                   ...v,
@@ -223,7 +223,7 @@ const removeRole = [
           new ActionRowBuilder<ButtonBuilder>().setComponents(
             new ButtonBuilder()
               .setCustomId(backButtonCustomId)
-              .setLabel('Go Back Without Deleting')
+              .setLabel('Revenir sans supprimer')
               .setEmoji(white.reply)
               .setStyle(ButtonStyle.Danger),
           ),
