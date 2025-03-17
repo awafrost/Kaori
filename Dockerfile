@@ -31,9 +31,6 @@ RUN npm install -g pnpm
 # Copier les fichiers nécessaires depuis l'étape build
 COPY --from=build /app /app
 
-# Copier explicitement le fichier .env
-COPY .env ./
-
 # Exposer un port (ajustez selon votre besoin)
 EXPOSE 3000
 
