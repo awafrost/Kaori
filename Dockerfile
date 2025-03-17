@@ -20,7 +20,7 @@ COPY . .
 RUN npx tsc
 
 # Étape 2 : Image d'exécution
-FROM node:18-slim  # Utiliser une image plus légère pour l'exécution
+FROM node:18-slim
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -28,17 +28,16 @@ WORKDIR /app
 # Installer pnpm dans l'image d'exécution
 RUN npm install -g pnpm
 
-# Copier les fichiers nécessaires depuis l'étape de build
 COPY --from=build /app /app
 
 # Installer uniquement les dépendances de production
 RUN pnpm install --prod
 
-# Copier explicitement le fichier .env (optionnel si déjà dans COPY . .)
+# Copier explicitement le fichier .env
 COPY .env ./
 
 # Exposer un port (ajustez selon votre besoin)
 EXPOSE 3000
 
 # Lancer le bot
-CMD ["node", "dist/index.js"]  # Remplace par le chemin réel de ton fichier compilé
+CMD ["node", "dist/index.js"]
