@@ -4,10 +4,10 @@ FROM node:18 AS build
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Installer pnpm avec plus de détails pour déboguer
-RUN npm install -g pnpm@8.15.4 --loglevel verbose
+# Installer pnpm
+RUN npm install -g pnpm
 
-# Copier les fichiers de gestion des dépendances
+# Copier package.json et pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml ./
 
 # Installer les dépendances avec pnpm
@@ -20,25 +20,22 @@ COPY . .
 RUN npx tsc
 
 # Étape 2 : Image d'exécution
-FROM node:18-slim
+FROM node:18
 
 # Définir le répertoire de travail
 WORKDIR /app
 
 # Installer pnpm dans l'image d'exécution
-RUN npm install -g pnpm@8.15.4 --loglevel verbose
+RUN npm install -g pnpm
 
-# Copier les fichiers nécessaires depuis l'étape de build
+# Copier les fichiers nécessaires depuis l'étape build
 COPY --from=build /app /app
 
-# Installer uniquement les dépendances de production
-RUN pnpm install --prod
-
-# Copier le fichier .env
+# Copier explicitement le fichier .env
 COPY .env ./
 
-# Exposer un port
+# Exposer un port (ajustez selon votre besoin)
 EXPOSE 3000
 
 # Lancer le bot
-CMD ["node", "dist/index.js"]
+CMD ["npm", "run", "start"]
