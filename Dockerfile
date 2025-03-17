@@ -4,8 +4,8 @@ FROM node:18 AS build
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Installer pnpm globalement
-RUN npm install -g pnpm
+# Installer pnpm avec plus de détails pour déboguer
+RUN npm install -g pnpm@8.15.4 --loglevel verbose
 
 # Copier les fichiers de gestion des dépendances
 COPY package.json pnpm-lock.yaml ./
@@ -13,7 +13,7 @@ COPY package.json pnpm-lock.yaml ./
 # Installer les dépendances avec pnpm
 RUN pnpm install
 
-# Copier le reste du code source (inclut .env si présent)
+# Copier le reste du code source
 COPY . .
 
 # Compiler le code TypeScript
@@ -26,17 +26,18 @@ FROM node:18-slim
 WORKDIR /app
 
 # Installer pnpm dans l'image d'exécution
-RUN npm install -g pnpm
+RUN npm install -g pnpm@8.15.4 --loglevel verbose
 
+# Copier les fichiers nécessaires depuis l'étape de build
 COPY --from=build /app /app
 
 # Installer uniquement les dépendances de production
 RUN pnpm install --prod
 
-# Copier explicitement le fichier .env
+# Copier le fichier .env
 COPY .env ./
 
-# Exposer un port (ajustez selon votre besoin)
+# Exposer un port
 EXPOSE 3000
 
 # Lancer le bot
