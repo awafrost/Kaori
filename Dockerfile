@@ -4,23 +4,23 @@ FROM node:18 AS build
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Installer pnpm
+# Installer pnpm globalement
 RUN npm install -g pnpm
 
-# Copier package.json et pnpm-lock.yaml
+# Copier les fichiers de gestion des dépendances
 COPY package.json pnpm-lock.yaml ./
 
 # Installer les dépendances avec pnpm
 RUN pnpm install
 
-# Copier le reste du code source
+# Copier le reste du code source (inclut .env si présent)
 COPY . .
 
 # Compiler le code TypeScript
 RUN npx tsc
 
 # Étape 2 : Image d'exécution
-FROM node:18
+FROM node:18-slim  # Utiliser une image plus légère pour l'exécution
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -28,11 +28,17 @@ WORKDIR /app
 # Installer pnpm dans l'image d'exécution
 RUN npm install -g pnpm
 
-# Copier les fichiers nécessaires depuis l'étape build
+# Copier les fichiers nécessaires depuis l'étape de build
 COPY --from=build /app /app
+
+# Installer uniquement les dépendances de production
+RUN pnpm install --prod
+
+# Copier explicitement le fichier .env (optionnel si déjà dans COPY . .)
+COPY .env ./
 
 # Exposer un port (ajustez selon votre besoin)
 EXPOSE 3000
 
 # Lancer le bot
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/index.js"]  # Remplace par le chemin réel de ton fichier compilé
