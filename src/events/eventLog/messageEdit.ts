@@ -61,9 +61,9 @@ export default new DiscordEventBuilder({
     const attachment = await createAttachment(oldMessage.attachments.difference(newMessage.attachments));
 
     if (attachment) {
-      await channel.send({ embeds: [embed], files: [attachment], components: [row] });
+      await channel.send({ embeds: [embed], files: [attachment] });
     } else {
-      await channel.send({ embeds: [embed], components: [row] });
+      await channel.send({ embeds: [embed] );
     }
   },
 });
