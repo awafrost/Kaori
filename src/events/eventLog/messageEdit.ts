@@ -63,7 +63,7 @@ export default new DiscordEventBuilder({
     if (attachment) {
       await channel.send({ embeds: [embed], files: [attachment] });
     } else {
-      await channel.send({ embeds: [embed] );
+      await channel.send({ embeds: [embed] });
     }
   },
 });
