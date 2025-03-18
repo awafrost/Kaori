@@ -67,7 +67,7 @@ export default new DiscordEventBuilder({
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(untimeoutButton);
 
-      await channel.send({ embeds: [embed], components: [row] });
+      await channel.send({ embeds: [embed] });
     } else {
       await channel.send({ embeds: [embed] });
     }
