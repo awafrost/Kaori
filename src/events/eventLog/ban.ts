@@ -74,7 +74,6 @@ export default new DiscordEventBuilder({
 
       await channel.send({
         embeds: [embed],
-        components: [row],
       });
     } else {
       await channel.send({ embeds: [embed] });
