@@ -14,12 +14,15 @@ import {
 export default new DiscordEventBuilder({
   type: Events.MessageUpdate,
   async execute(oldMessage, newMessage) {
-    if (!oldMessage.inGuild() || oldMessage.author.bot) return;
+    // Vérifie que le message est dans une guilde et n'est pas d'un bot (Corriger à cause de Suzuya)
+    if (!oldMessage.inGuild() || !newMessage.inGuild() || oldMessage.author.bot) return;
 
+    // Récupère les paramètres de log pour la guilde
     const { messageEdit: setting } =
       (await EventLogConfig.findOne({ guildId: oldMessage.guild.id })) ?? {};
     if (!(setting?.enabled && setting.channel)) return;
 
+    // Récupère le canal de log
     const channel = await getSendableChannel(oldMessage.guild, setting.channel).catch(() => {
       EventLogConfig.updateOne(
         { guildId: oldMessage.guild.id },
@@ -28,9 +31,10 @@ export default new DiscordEventBuilder({
     });
     if (!channel) return;
 
+    // Crée l'embed de log
     const embed = new EmbedBuilder()
       .setTitle('✏️ Message modifié')
-      .setURL(oldMessage.url)
+      .setURL(newMessage.url) // Utilise newMessage.url pour pointer vers le message actuel
       .setDescription(
         [
           channelField(oldMessage.channel),
@@ -42,28 +46,37 @@ export default new DiscordEventBuilder({
       .setThumbnail(oldMessage.author.displayAvatarURL())
       .setTimestamp();
 
+    // Vérifie si le contenu a changé et ajoute les champs correspondants
     const contentChanged = oldMessage.content !== newMessage.content;
     if (contentChanged) {
       embed.addFields(
-        { name: 'Avant modification', value: oldMessage.content || 'Aucun contenu' },
-        { name: 'Après modification', value: newMessage.content || 'Aucun contenu' },
+        { name: 'Avant modification', value: oldMessage.content || 'Aucun contenu', inline: true },
+        { name: 'Après modification', value: newMessage.content || 'Aucun contenu', inline: true },
       );
     }
 
-    // Ajout du bouton "Supprimer le message"
+    // Crée les boutons
+    const jumpButton = new ButtonBuilder()
+      .setLabel('Aller au message')
+      .setStyle(ButtonStyle.Link) // Style lien pour rediriger directement
+      .setURL(newMessage.url); // Lien vers le message modifié
+
     const deleteButton = new ButtonBuilder()
-      .setCustomId(`delete_${oldMessage.id}`) // Identifiant unique avec l'ID du message
+      .setCustomId(`delete_${oldMessage.id}`)
       .setLabel('Supprimer le message')
       .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteButton);
+    // Ajoute les boutons dans une ActionRow
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(jumpButton, deleteButton);
 
+    // Gère les pièces jointes
     const attachment = await createAttachment(oldMessage.attachments.difference(newMessage.attachments));
 
-    if (attachment) {
-      await channel.send({ embeds: [embed], files: [attachment] });
-    } else {
-      await channel.send({ embeds: [embed] });
-    }
+    // Envoie le message de log
+    await channel.send({
+      embeds: [embed],
+      components: [row],
+      files: attachment ? [attachment] : [],
+    });
   },
 });
