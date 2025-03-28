@@ -3,9 +3,6 @@ import { DiscordEventBuilder } from '@modules/events';
 import { channelField, scheduleField, userField } from '@modules/fields';
 import { createAttachment, getSendableChannel } from '@modules/util';
 import {
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
   Colors,
   EmbedBuilder,
   Events,
@@ -50,66 +47,11 @@ export default new DiscordEventBuilder({
       );
     }
 
-    const jumpButton = new ButtonBuilder()
-      .setLabel('Aller au message')
-      .setStyle(ButtonStyle.Link)
-      .setURL(newMessage.url);
-
-    const deleteButton = new ButtonBuilder()
-      .setCustomId(`delete_${oldMessage.id}`)
-      .setLabel('Supprimer le message')
-      .setStyle(ButtonStyle.Danger);
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(jumpButton, deleteButton);
     const attachment = await createAttachment(oldMessage.attachments.difference(newMessage.attachments));
 
-    const logMessage = await channel.send({
+    await channel.send({
       embeds: [embed],
-      components: [row],
       files: attachment ? [attachment] : [],
-    });
-
-    const collector = logMessage.createMessageComponentCollector({
-      filter: i => i.customId === `delete_${oldMessage.id}`,
-      time: 24 * 60 * 60 * 1000
-    });
-
-    collector.on('collect', async interaction => {
-      try {
-        if (!interaction.member.permissions.has('ManageMessages')) {
-          return await interaction.reply({
-            content: "Vous n'avez pas la permission de supprimer des messages !",
-            ephemeral: true
-          });
-        }
-
-        await newMessage.delete();
-        embed.setTitle('✏️ Message modifié (supprimé)');
-        embed.setColor(Colors.Red);
-        
-        await interaction.update({
-          content: "✅ Message supprimé avec succès",
-          embeds: [embed],
-          components: []
-        });
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-        await interaction.reply({
-          content: `Erreur lors de la suppression du message : ${errorMessage}`,
-          ephemeral: true
-        });
-      }
-    });
-
-    collector.on('end', () => {
-      logMessage.edit({ 
-        components: [
-          new ActionRowBuilder<ButtonBuilder>().addComponents(
-            jumpButton,
-            deleteButton.setDisabled(true)
-          )
-        ] 
-      }).catch(() => {});
     });
   },
 });
