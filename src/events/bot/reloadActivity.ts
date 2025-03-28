@@ -12,58 +12,66 @@ const onGuildDelete = new DiscordEventBuilder({
 });
 
 async function setActivity(client: Client<true>) {
-  // Liste de 10 statuts d’activité
+  // Calcul du nombre total de membres sur tous les serveurs
+  const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+
+  // Calcul du nombre total de salons accessibles (ceux où le bot a des permissions)
+  const totalChannels = client.channels.cache.filter(channel => 
+    channel.isTextBased() && channel.permissionsFor(client.user)?.has('ViewChannel')
+  ).size;
+
+  // Liste de statuts d’activité avec des stats précises
   const activities = [
     {
-      name: `${(await client.application?.fetch())?.approximateGuildCount} serveurs`,
+      name: `${client.guilds.cache.size} serveurs`,
+      type: ActivityType.Watching, // "Regarde X serveurs"
+    },
+    {
+      name: `${(await client.application?.fetch())?.approximateGuildCount ?? client.guilds.cache.size} serveurs`,
       type: ActivityType.Competing, // "En compétition sur X serveurs"
     },
     {
-      name: `${client.guilds.cache.size} serveurs`,
-      type: ActivityType.Watching, // "Regarde X guildes"
+      name: `${totalMembers} membres au total`,
+      type: ActivityType.Watching, // "Regarde X membres au total"
     },
     {
-      name: `${client.users.cache.size} utilisateurs`,
-      type: ActivityType.Watching, // "Regarde X utilisateurs"
+      name: `${totalChannels} salons accessibles`,
+      type: ActivityType.Listening, // "Écoute X salons accessibles"
     },
     {
-      name: 'les messages du serveur',
-      type: ActivityType.Watching, // "Regarde les messages du serveur"
+      name: 'les messages des membres',
+      type: ActivityType.Watching, // "Regarde les messages des membres"
     },
     {
-      name: 'les étoiles dans le ciel',
-      type: ActivityType.Watching, // "Regarde les étoiles dans le ciel"
+      name: 'la communauté s’agrandir',
+      type: ActivityType.Watching, // "Regarde la communauté s’agrandir"
     },
     {
-      name: `${client.channels.cache.size} salons`,
-      type: ActivityType.Watching, // "Regarde X salons"
+      name: 'les commandes en cours',
+      type: ActivityType.Playing, // "Joue avec les commandes en cours"
     },
     {
-      name: 'les activités des membres',
-      type: ActivityType.Watching, // "Regarde les activités des membres"
+      name: 'les nouveaux messages',
+      type: ActivityType.Watching, // "Regarde les nouveaux messages"
     },
     {
-      name: 'les nouveaux arrivants',
-      type: ActivityType.Watching, // "Regarde les nouveaux arrivants"
+      name: 'les serveurs évoluer',
+      type: ActivityType.Watching, // "Regarde les serveurs évoluer"
     },
     {
-      name: 'les bots concurrents',
-      type: ActivityType.Watching, // "Regarde les bots concurrents"
-    },
-    {
-      name: 'l’avenir de Discord',
-      type: ActivityType.Watching, // "Regarde l’avenir de Discord"
+      name: 'un Discord vivant',
+      type: ActivityType.Streaming, // "Streame un Discord vivant"
     },
   ];
 
   // Définir une activité initiale immédiatement
   let currentIndex = 0;
-  client.user.setActivity(activities[currentIndex]);
+  client.user?.setActivity(activities[currentIndex]);
 
   // Changer l’activité toutes les 30 secondes
   setInterval(() => {
     currentIndex = (currentIndex + 1) % activities.length; // Boucle sur les statuts
-    client.user.setActivity(activities[currentIndex]);
+    client.user?.setActivity(activities[currentIndex]);
   }, 30_000); // 30 secondes
 }
 

@@ -7,10 +7,6 @@ import {
   Colors,
   EmbedBuilder,
   Events,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-  inlineCode,
   type GuildAuditLogsEntry,
   type User,
 } from 'discord.js';
@@ -32,8 +28,7 @@ export default new DiscordEventBuilder({
     if (!(executor && banTarget)) return;
 
     const isCancel = action === AuditLogEvent.MemberBanRemove;
-    const { ban: setting } =
-      (await EventLogConfig.findOne({ guildId: guild.id })) ?? {};
+    const { ban: setting } = (await EventLogConfig.findOne({ guildId: guild.id })) ?? {};
     if (!(setting?.enabled && setting.channel)) return;
 
     const channel = await getSendableChannel(guild, setting.channel).catch(() => {
@@ -44,39 +39,38 @@ export default new DiscordEventBuilder({
     });
     if (!channel) return;
 
+    // Création d'un embed amélioré
     const embed = new EmbedBuilder()
-      .setTitle(`${inlineCode('🔨')} BAN${isCancel ? ' Annulé' : ''}`)
+      .setTitle(`${isCancel ? '🛡️ Déban' : '🔨 Ban'} d’un membre`)
       .setDescription(
-        [
-          userField(banTarget, { label: 'Cible' }), // Utilise banTarget typé comme User
-          '',
-          userField(await executor.fetch(), {
-            label: 'Exécuteur',
-            color: 'blurple',
-          }),
-          textField(reason ?? 'Aucune raison fournie', {
-            label: 'Raison',
-            color: 'blurple',
-          }),
-        ].join('\n'),
+        `Un membre a été ${isCancel ? 'débanni' : 'banni'} du serveur. Voici les détails :`
       )
-      .setColor(isCancel ? Colors.Blue : Colors.Red)
-      .setThumbnail(banTarget.displayAvatarURL()) // Utilise banTarget
+      .addFields(
+        {
+          name: '👤 Membre concerné',
+          value: userField(banTarget, { label: null }) || 'Utilisateur inconnu',
+          inline: true,
+        },
+        {
+          name: '🛠️ Modérateur',
+          value: userField(await executor.fetch(), { label: null }) || 'Inconnu',
+          inline: true,
+        },
+        {
+          name: '📝 Raison',
+          value: reason ?? 'Aucune raison spécifiée',
+          inline: false,
+        }
+      )
+      .setColor(isCancel ? Colors.Green : Colors.Red) // Vert pour déban, rouge pour ban
+      .setThumbnail(banTarget.displayAvatarURL())
+      .setFooter({
+        text: `ID: ${banTarget.id} • ${isCancel ? 'Déban' : 'Ban'} effectué`,
+        iconURL: guild.iconURL() ?? undefined,
+      })
       .setTimestamp();
 
-    if (!isCancel) {
-      const unbanButton = new ButtonBuilder()
-        .setCustomId(`unban_${banTarget.id}`) // Utilise banTarget.id
-        .setLabel('Débannir')
-        .setStyle(ButtonStyle.Success);
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(unbanButton);
-
-      await channel.send({
-        embeds: [embed],
-      });
-    } else {
-      await channel.send({ embeds: [embed] });
-    }
+    // Envoi de l'embed dans le channel
+    await channel.send({ embeds: [embed] });
   },
 });
