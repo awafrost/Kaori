@@ -1,5 +1,5 @@
 import { DiscordEventBuilder } from '@modules/events';
-import { ActivityType, type Client, Events } from 'discord.js';
+import { ActivityType, type Client, Events, PermissionFlagsBits } from 'discord.js';
 
 const onGuildCreate = new DiscordEventBuilder({
   type: Events.GuildCreate,
@@ -12,67 +12,41 @@ const onGuildDelete = new DiscordEventBuilder({
 });
 
 async function setActivity(client: Client<true>) {
-  // Calcul du nombre total de membres sur tous les serveurs
   const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
 
-  // Calcul du nombre total de salons accessibles (ceux où le bot a des permissions)
-  const totalChannels = client.channels.cache.filter(channel => 
-    channel.isTextBased() && channel.permissionsFor(client.user)?.has('ViewChannel')
-  ).size;
+  // Vérification du type de channel et gestion des permissions
+  const totalChannels = client.channels.cache.filter(channel => {
+    if (!channel.isTextBased()) return false;
+    // Vérifier si c'est un channel de guilde avant d'utiliser permissionsFor
+    if ('guild' in channel) {
+      return channel.permissionsFor(client.user)?.has(PermissionFlagsBits.ViewChannel) ?? false;
+    }
+    return false; // Exclure les DM channels
+  }).size;
 
-  // Liste de statuts d’activité avec des stats précises
   const activities = [
-    {
-      name: `${client.guilds.cache.size} serveurs`,
-      type: ActivityType.Watching, // "Regarde X serveurs"
+    { name: `${client.guilds.cache.size} serveurs`, type: ActivityType.Watching },
+    { 
+      name: `${(await client.application?.fetch())?.approximateGuildCount ?? client.guilds.cache.size} serveurs`, 
+      type: ActivityType.Competing 
     },
-    {
-      name: `${(await client.application?.fetch())?.approximateGuildCount ?? client.guilds.cache.size} serveurs`,
-      type: ActivityType.Competing, // "En compétition sur X serveurs"
-    },
-    {
-      name: `${totalMembers} membres au total`,
-      type: ActivityType.Watching, // "Regarde X membres au total"
-    },
-    {
-      name: `${totalChannels} salons accessibles`,
-      type: ActivityType.Listening, // "Écoute X salons accessibles"
-    },
-    {
-      name: 'les messages des membres',
-      type: ActivityType.Watching, // "Regarde les messages des membres"
-    },
-    {
-      name: 'la communauté s’agrandir',
-      type: ActivityType.Watching, // "Regarde la communauté s’agrandir"
-    },
-    {
-      name: 'les commandes en cours',
-      type: ActivityType.Playing, // "Joue avec les commandes en cours"
-    },
-    {
-      name: 'les nouveaux messages',
-      type: ActivityType.Watching, // "Regarde les nouveaux messages"
-    },
-    {
-      name: 'les serveurs évoluer',
-      type: ActivityType.Watching, // "Regarde les serveurs évoluer"
-    },
-    {
-      name: 'un Discord vivant',
-      type: ActivityType.Streaming, // "Streame un Discord vivant"
-    },
+    { name: `${totalMembers} membres au total`, type: ActivityType.Watching },
+    { name: `${totalChannels} salons accessibles`, type: ActivityType.Listening },
+    { name: 'les messages des membres', type: ActivityType.Watching },
+    { name: 'la communauté s’agrandir', type: ActivityType.Watching },
+    { name: 'les commandes en cours', type: ActivityType.Playing },
+    { name: 'les nouveaux messages', type: ActivityType.Watching },
+    { name: 'les serveurs évoluer', type: ActivityType.Watching },
+    { name: 'un Discord vivant', type: ActivityType.Streaming },
   ];
 
-  // Définir une activité initiale immédiatement
   let currentIndex = 0;
   client.user?.setActivity(activities[currentIndex]);
 
-  // Changer l’activité toutes les 30 secondes
   setInterval(() => {
-    currentIndex = (currentIndex + 1) % activities.length; // Boucle sur les statuts
+    currentIndex = (currentIndex + 1) % activities.length;
     client.user?.setActivity(activities[currentIndex]);
-  }, 30_000); // 30 secondes
+  }, 30_000);
 }
 
 export default [onGuildCreate, onGuildDelete];

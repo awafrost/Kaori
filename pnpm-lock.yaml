@@ -44,6 +44,9 @@ importers:
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
+      pnpm:
+        specifier: ^10.7.0
+        version: 10.7.0
       zod:
         specifier: ^3.23.8
         version: 3.23.8
@@ -1282,6 +1285,11 @@ packages:
   picomatch@2.3.1:
     resolution: {integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==}
     engines: {node: '>=8.6'}
+
+  pnpm@10.7.0:
+    resolution: {integrity: sha512-a4Za1LYqHZhCth1nSjk5A7hx2SRJVPZSuIQsK1U8chdrJ49kxGPlLUD/+KujhcI1yMns9cx95P14uLttSWM6tg==}
+    engines: {node: '>=18.12'}
+    hasBin: true
 
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
@@ -3380,6 +3388,8 @@ snapshots:
   path-parse@1.0.7: {}
 
   picomatch@2.3.1: {}
+
+  pnpm@10.7.0: {}
 
   proxy-from-env@1.1.0: {}
 
