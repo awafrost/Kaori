@@ -22,14 +22,26 @@ export default new DiscordEventBuilder({
 
     // Détection des changements de canal vocal
     if (!oldState.channel && newState.channel) {
+      let description = [
+        userField(newState.member.user, { label: 'Membre' }),
+        channelField(newState.channel, { label: 'Salon' }),
+      ];
+
+      // Ajouter le statut du micro et du son directement dans l'embed de connexion
+      if (newState.selfMute !== undefined) {
+        description.push(
+          `🎙️ Micro : ${newState.selfMute ? 'Coupé (auto)' : 'Activé (auto)'}`,
+        );
+      }
+      if (newState.selfDeaf !== undefined) {
+        description.push(
+          `🔊 Son : ${newState.selfDeaf ? 'Coupé (auto)' : 'Activé (auto)'}`,
+        );
+      }
+
       embed
         .setTitle('🔊 Connexion au salon vocal')
-        .setDescription(
-          [
-            userField(newState.member.user, { label: 'Membre' }),
-            channelField(newState.channel, { label: 'Salon' }),
-          ].join('\n')
-        )
+        .setDescription(description.join('\n'))
         .setColor(Colors.Green);
     } else if (oldState.channel && !newState.channel) {
       embed
@@ -38,7 +50,7 @@ export default new DiscordEventBuilder({
           [
             userField(newState.member.user, { label: 'Membre' }),
             channelField(oldState.channel, { label: 'Salon' }),
-          ].join('\n')
+          ].join('\n'),
         )
         .setColor(Colors.Red);
     } else if (oldState.channel && newState.channel && !oldState.channel.equals(newState.channel)) {
@@ -49,31 +61,31 @@ export default new DiscordEventBuilder({
             userField(newState.member.user, { label: 'Membre' }),
             channelField(oldState.channel, { label: 'Ancien salon' }),
             channelField(newState.channel, { label: 'Nouveau salon' }),
-          ].join('\n')
+          ].join('\n'),
         )
         .setColor(Colors.Yellow);
     }
 
-    // Détection des changements de micro
-    if (oldState.selfMute !== newState.selfMute) {
+    // Détection des changements de micro (seulement si l'utilisateur est déjà dans un salon)
+    if (oldState.channel && newState.channel && oldState.selfMute !== newState.selfMute) {
       embed
         .setTitle(newState.selfMute ? '🔇 Micro coupé (auto)' : '🔊 Micro réactivé (auto)')
         .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.selfMute ? Colors.DarkRed : Colors.DarkGreen);
-    } else if (oldState.mute !== newState.mute) {
+    } else if (oldState.channel && newState.channel && oldState.mute !== newState.mute) {
       embed
         .setTitle(newState.mute ? '🔇 Micro coupé par un modérateur' : '🔊 Micro réactivé par un modérateur')
         .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.mute ? Colors.Red : Colors.Green);
     }
 
-    // Détection des changements de son
-    if (oldState.selfDeaf !== newState.selfDeaf) {
+    // Détection des changements de son (seulement si l'utilisateur est déjà dans un salon)
+    if (oldState.channel && newState.channel && oldState.selfDeaf !== newState.selfDeaf) {
       embed
         .setTitle(newState.selfDeaf ? '🔇 Son coupé (auto)' : '🔊 Son réactivé (auto)')
         .setDescription(userField(newState.member.user, { label: 'Membre' }))
         .setColor(newState.selfDeaf ? Colors.DarkRed : Colors.DarkGreen);
-    } else if (oldState.deaf !== newState.deaf) {
+    } else if (oldState.channel && newState.channel && oldState.deaf !== newState.deaf) {
       embed
         .setTitle(newState.deaf ? '🔇 Son coupé par un modérateur' : '🔊 Son réactivé par un modérateur')
         .setDescription(userField(newState.member.user, { label: 'Membre' }))

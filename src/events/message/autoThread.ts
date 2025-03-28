@@ -45,7 +45,7 @@ export default new DiscordEventBuilder({
 
     // Ajouter un bouton pour inviter le bot
     const inviteButton = new ButtonBuilder()
-      .setURL('https://discord.com/oauth2/authorize?client_id=855107430693077033') // Remplacez par le lien d'invitation de votre bot
+      .setURL('https://discord.com/oauth2/authorize?client_id=855107430693077033')
       .setLabel('Inviter')
       .setEmoji('1323284326778933279')
       .setStyle(ButtonStyle.Link);
@@ -91,17 +91,38 @@ export default new DiscordEventBuilder({
         confirmCollector?.on('collect', async (confirmInteraction) => {
           if (confirmInteraction.customId === 'confirm_yes') {
             try {
-              // Supprimer le message original
-              await message.delete();
+              // Vérifier si le message original existe encore
+              let messageDeleted = false;
+              try {
+                await message.fetch(); // Vérifie si le message existe
+                await message.delete(); // Supprime le message s'il existe
+                messageDeleted = true;
+              } catch (error) {
+                // Si le message est déjà supprimé, on continue pour supprimer le thread
+                messageDeleted = false;
+              }
 
               // Supprimer le thread
-              await thread.delete('Thread et message original supprimés par un administrateur');
+              await thread.delete('Thread supprimé par un administrateur');
 
               // Répondre à l'interaction
-              await confirmInteraction.update({ content: 'Le thread et le message ont été supprimés.', components: [] });
+              if (messageDeleted) {
+                await confirmInteraction.update({ 
+                  content: 'Le thread et le message ont été supprimés.', 
+                  components: [] 
+                });
+              } else {
+                await confirmInteraction.update({ 
+                  content: 'Le message original était déjà supprimé. Le thread a été supprimé.', 
+                  components: [] 
+                });
+              }
             } catch (error) {
-              console.error('Erreur lors de la suppression du thread et du message:', error);
-              await confirmInteraction.update({ content: 'Impossible de supprimer le thread ou le message.', components: [] });
+              console.error('Erreur lors de la suppression:', error);
+              await confirmInteraction.update({ 
+                content: 'Impossible de supprimer le thread.', 
+                components: [] 
+              });
             }
           } else {
             await confirmInteraction.update({ content: 'Action annulée.', components: [] });

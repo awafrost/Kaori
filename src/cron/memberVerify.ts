@@ -20,24 +20,24 @@ const levels: Record<
   { name: string; description: string }
 > = {
   [GuildVerificationLevel.None]: {
-    name: 'None',
-    description: 'No restrictions',
+    name: 'Aucun',
+    description: 'Aucune restriction',
   },
   [GuildVerificationLevel.Low]: {
-    name: 'Low',
-    description: 'Accounts with verified email only',
+    name: 'Faible',
+    description: 'Comptes avec un email vérifié uniquement',
   },
   [GuildVerificationLevel.Medium]: {
-    name: 'Medium',
-    description: 'Accounts registered for at least 5 minutes',
+    name: 'Moyen',
+    description: 'Comptes enregistrés depuis au moins 5 minutes',
   },
   [GuildVerificationLevel.High]: {
-    name: 'High',
-    description: 'Members for at least 10 minutes on this server',
+    name: 'Élevé',
+    description: 'Membres présents sur ce serveur depuis au moins 10 minutes',
   },
   [GuildVerificationLevel.VeryHigh]: {
-    name: 'Very High',
-    description: 'Accounts with verified phone number only',
+    name: 'Très élevé',
+    description: 'Comptes avec un numéro de téléphone vérifié uniquement',
   },
 };
 
@@ -65,7 +65,7 @@ async function start(hour: number) {
 
     guild
       .setVerificationLevel(level)
-      .then(() => sendLog(guild, setting, level, 'Start'))
+      .then(() => sendLog(guild, setting, level, 'Début'))
       .catch(console.error);
   }
 }
@@ -85,7 +85,7 @@ async function end(hour: number) {
 
     guild
       .setVerificationLevel(level)
-      .then(() => sendLog(guild, setting, level, 'End'))
+      .then(() => sendLog(guild, setting, level, 'Fin'))
       .catch(console.error);
   }
 }
@@ -107,10 +107,10 @@ async function sendLog(
     .send({
       embeds: [
         new EmbedBuilder()
-          .setTitle(`${inlineCode('✅')} Auto Verification Level Change - ${label}`)
+          .setTitle(`${inlineCode('✅')} Changement automatique du niveau de vérification - ${label}`)
           .setDescription(
             [
-              `Changed the server's verification level to **${levels[level].name}**`,
+              `Le niveau de vérification du serveur a été changé en **${levels[level].name}**`,
               inlineCode(levels[level].description),
             ].join('\n'),
           )
