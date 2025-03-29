@@ -31,16 +31,28 @@ export default new ChatInput(
       });
     }
 
+    // Forcer la mise à jour du cache des membres
+    await interaction.guild.members.fetch();
+
     const now = Date.now();
     // Filtrage des membres mutés avec une vérification explicite
     const mutedMembers = interaction.guild.members.cache.filter(
       (member: GuildMember) => {
-        // Vérifie si le membre a un mute actif (communicationDisabledUntilTimestamp existe et est dans le futur)
-        return (
+        // Vérifie si le membre a un mute actif
+        const isMuted = (
           member.communicationDisabledUntilTimestamp !== null &&
           member.communicationDisabledUntilTimestamp !== undefined &&
           member.communicationDisabledUntilTimestamp > now
         );
+        // Log pour déboguer
+        if (member.user.tag === 'balou#4') {
+          console.log(`Balou mute status:`, {
+            communicationDisabledUntilTimestamp: member.communicationDisabledUntilTimestamp,
+            now,
+            isMuted,
+          });
+        }
+        return isMuted;
       }
     );
     const mutedArray = Array.from(mutedMembers.values());
