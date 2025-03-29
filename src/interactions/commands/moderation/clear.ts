@@ -21,7 +21,7 @@ export default new ChatInput(
         description: 'Nombre de messages à supprimer',
         type: ApplicationCommandOptionType.Integer,
         minValue: 1,
-        maxValue: 1000,
+        maxValue: 1000, // Déjà à 1000 dans le code original
         required: true,
       },
       {
@@ -73,45 +73,62 @@ export default new ChatInput(
     const type = interaction.options.getString('type') || 'all';
 
     try {
-      let messagesToDelete;
-      const messages = await interaction.channel.messages.fetch({ limit: bulkCount });
+      // Fetch plus de messages pour avoir assez après filtrage
+      const messages = await interaction.channel.messages.fetch({ limit: 100 });
+      let messagesToDelete = messages;
 
-      // Filter messages based on 'from' option
-      switch (from) {
-        case 'member':
-          if (!user) {
-            return interaction.reply({
-              content: `${inlineCode('❌')} Vous devez spécifier un utilisateur lorsque vous choisissez de supprimer les messages d’un membre.`,
-              ephemeral: true,
-            });
-          }
-          messagesToDelete = messages.filter(msg => msg.author.id === user.id);
-          break;
-        case 'bot':
-          messagesToDelete = messages.filter(msg => msg.author.bot);
-          break;
-        default: // 'all'
-          messagesToDelete = messages;
+      // Filtrer d'abord par auteur
+      if (from === 'member') {
+        if (!user) {
+          return interaction.reply({
+            content: `${inlineCode('❌')} Vous devez spécifier un utilisateur lorsque vous choisissez de supprimer les messages d’un membre.`,
+            ephemeral: true,
+          });
+        }
+        messagesToDelete = messages.filter(msg => msg.author.id === user.id);
+      } else if (from === 'bot') {
+        messagesToDelete = messages.filter(msg => msg.author.bot);
       }
 
-      // Further filter based on content type
-      switch (type) {
-        case 'image':
-          messagesToDelete = messagesToDelete.filter(msg => msg.attachments.size > 0 && msg.attachments.some(a => a.contentType && a.contentType.startsWith('image/')));
-          break;
-        case 'video':
-          messagesToDelete = messagesToDelete.filter(msg => msg.attachments.size > 0 && msg.attachments.some(a => a.contentType && a.contentType.startsWith('video/')));
-          break;
-        case 'embed':
-          messagesToDelete = messagesToDelete.filter(msg => msg.embeds.length > 0);
-          break;
-        case 'text':
-          messagesToDelete = messagesToDelete.filter(msg => msg.content && !msg.attachments.size && msg.embeds.length === 0);
-          break;
-        // Default case 'all' doesn't require additional filtering
+      // Appliquer le filtre de type de contenu
+      if (type !== 'all') {
+        switch (type) {
+          case 'image':
+            messagesToDelete = messagesToDelete.filter(msg => 
+              msg.attachments.size > 0 && 
+              msg.attachments.some(a => a.contentType && a.contentType.startsWith('image/'))
+            );
+            break;
+          case 'video':
+            messagesToDelete = messagesToDelete.filter(msg => 
+              msg.attachments.size > 0 && 
+              msg.attachments.some(a => a.contentType && a.contentType.startsWith('video/'))
+            );
+            break;
+          case 'embed':
+            messagesToDelete = messagesToDelete.filter(msg => msg.embeds.length > 0);
+            break;
+          case 'text':
+            messagesToDelete = messagesToDelete.filter(msg => 
+              msg.content && 
+              !msg.attachments.size && 
+              msg.embeds.length === 0
+            );
+            break;
+        }
       }
 
-      const deleted = await interaction.channel.bulkDelete(messagesToDelete, true);
+      // Limiter au nombre demandé
+      const finalMessages = Array.from(messagesToDelete.values()).slice(0, bulkCount);
+      
+      if (finalMessages.length === 0) {
+        return interaction.reply({
+          content: `${inlineCode('❌')} Aucun message correspondant aux critères n’a été trouvé.`,
+          ephemeral: true,
+        });
+      }
+
+      const deleted = await interaction.channel.bulkDelete(finalMessages, true);
       interaction.reply({
         embeds: [
           new EmbedBuilder()
