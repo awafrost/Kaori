@@ -42,19 +42,19 @@ const verifyCommand = new ChatInput(
       },
       {
         name: 'role',
-        description: 'Rôle à attribuer après une vérification réussie',
+        description: 'Rôle à attribuer après vérification',
         type: ApplicationCommandOptionType.Role,
         required: true,
       },
       {
         name: 'channel',
-        description: 'Salon où envoyer le panneau de vérification (par défaut : salon actuel)',
+        description: 'Salon où envoyer le panneau (par défaut : salon actuel)',
         type: ApplicationCommandOptionType.Channel,
-        channelTypes: [0], // 0 = TextChannel
+        channelTypes: [0], // TextChannel
       },
       {
         name: 'description',
-        description: 'Description de l’embed (utilisez deux espaces pour un saut de ligne)',
+        description: 'Description de l’embed (deux espaces pour un saut de ligne)',
         type: ApplicationCommandOptionType.String,
         maxLength: 4096,
       },
@@ -75,12 +75,11 @@ const verifyCommand = new ChatInput(
       },
       {
         name: 'image',
-        description: 'Image',
+        description: 'Image pour l’embed',
         type: ApplicationCommandOptionType.Attachment,
       },
     ],
-    // Correction : Utilisation des noms corrects en camelCase dans un tableau
-    defaultMemberPermissions: ['ManageRoles', 'ManageChannels'],
+    defaultMemberPermissions: ['ManageRoles', 'ManageChannels'], // Permissions en tableau camelCase
     dmPermission: false,
   },
   async (interaction) => {
@@ -92,6 +91,7 @@ const verifyCommand = new ChatInput(
       ? (interaction.guild.channels.cache.get(channelOption.id) as TextChannel)
       : (interaction.channel as TextChannel);
 
+    // Vérifications des permissions et du salon
     if (!targetChannel || !targetChannel.isTextBased()) {
       return interaction.reply({
         content: `${inlineCode('❌')} Salon invalide ou non textuel.`,
@@ -104,35 +104,33 @@ const verifyCommand = new ChatInput(
       !interaction.guild.members.me?.permissionsIn(targetChannel).has(PermissionFlagsBits.SendMessages)
     ) {
       return interaction.reply({
-        content: permissionField(
-          // Correction : Tableau de permissions
-          ['ManageRoles', 'SendMessages'],
-          { label: 'Le bot n’a pas les permissions nécessaires' }
-        ),
+        content: permissionField(['ManageRoles', 'SendMessages'], {
+          label: 'Le bot n’a pas les permissions nécessaires',
+        }),
         ephemeral: true,
       });
     }
 
     if (role.managed || role.id === interaction.guild.roles.everyone.id) {
       return interaction.reply({
-        content: `${inlineCode('❌')} Ce rôle ne peut pas être utilisé pour la vérification`,
+        content: `${inlineCode('❌')} Ce rôle ne peut pas être utilisé.`,
         ephemeral: true,
       });
     }
 
     if (
       !interaction.member.permissions.has(PermissionFlagsBits.Administrator) &&
-      interaction.member.roles.highest.position < role.position
+      interaction.member.roles.highest.position <= role.position
     ) {
       return interaction.reply({
-        content: `${inlineCode('❌')} Vous ne pouvez pas utiliser un rôle supérieur au vôtre.`,
+        content: `${inlineCode('❌')} Le rôle est supérieur ou égal au vôtre.`,
         ephemeral: true,
       });
     }
 
     if (!role.editable) {
       return interaction.reply({
-        content: `${inlineCode('❌')} Le bot ne peut pas attribuer ce rôle (position trop élevée).`,
+        content: `${inlineCode('❌')} Le bot ne peut pas attribuer ce rôle.`,
         ephemeral: true,
       });
     }
@@ -163,7 +161,7 @@ const verifyCommand = new ChatInput(
       components: [
         new ActionRowBuilder<ButtonBuilder>().setComponents(
           new ButtonBuilder()
-            .setCustomId(`kaori-js:verify-${verifyType}-${role.id}`)
+            .setCustomId(`verify-${verifyType}-${role.id}`) // Simplification du customId
             .setLabel('Vérifier maintenant')
             .setStyle(ButtonStyle.Success)
             .setEmoji('✅'),
@@ -172,7 +170,7 @@ const verifyCommand = new ChatInput(
     });
 
     await interaction.reply({
-      content: `${inlineCode('✅')} Panneau de vérification envoyé dans ${targetChannel.toString()}.`,
+      content: `${inlineCode('✅')} Panneau envoyé dans ${targetChannel.toString()}.`,
       ephemeral: true,
     });
   },
@@ -180,7 +178,7 @@ const verifyCommand = new ChatInput(
 
 const verifyButton = new Button(
   {
-    customId: /^kaori-js:verify-(button|image)-\d+$/,
+    customId: /^verify-(button|image)-\d+$/, // Regex mis à jour
   },
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
@@ -188,37 +186,40 @@ const verifyButton = new Button(
     const [_, type, roleId] = interaction.customId.split('-');
     const roles = interaction.member.roles;
 
-    if (duringAuthentication.has(interaction.user.id))
+    if (duringAuthentication.has(interaction.user.id)) {
       return interaction.reply({
-        content: `${inlineCode('❌')} Vous êtes déjà en cours de vérification !`,
+        content: `${inlineCode('❌')} Vérification déjà en cours.`,
         ephemeral: true,
       });
-    if (!roleId || !(roles instanceof GuildMemberRoleManager))
+    }
+
+    if (!roleId || !(roles instanceof GuildMemberRoleManager)) {
       return interaction.reply({
         content: `${inlineCode('❌')} Erreur lors de la vérification.`,
         ephemeral: true,
       });
-    if (roles.cache.has(roleId))
+    }
+
+    if (roles.cache.has(roleId)) {
       return interaction.reply({
-        content: `${inlineCode('✅')} Vous êtes déjà vérifié !`,
+        content: `${inlineCode('✅')} Déjà vérifié !`,
         ephemeral: true,
       });
+    }
 
     if (type === 'button') {
-      roles
-        .add(roleId, 'Vérification via bouton')
-        .then(() =>
-          interaction.reply({
-            content: `${inlineCode('✅')} Vérification réussie ! Bienvenue !`,
-            ephemeral: true,
-          }),
-        )
-        .catch(() =>
-          interaction.reply({
-            content: `${inlineCode('❌')} Impossible d’attribuer le rôle. Contactez un administrateur.`,
-            ephemeral: true,
-          }),
-        );
+      try {
+        await roles.add(roleId, 'Vérification via bouton');
+        await interaction.reply({
+          content: `${inlineCode('✅')} Vérification réussie ! Bienvenue !`,
+          ephemeral: true,
+        });
+      } catch (error) {
+        await interaction.reply({
+          content: `${inlineCode('❌')} Échec de l’attribution du rôle.`,
+          ephemeral: true,
+        });
+      }
     }
 
     if (type === 'image') {
@@ -231,79 +232,72 @@ const verifyButton = new Button(
         { rotate: 15, skew: true },
       );
 
-      interaction.user
-        .send({
+      try {
+        await interaction.user.send({
           embeds: [
             new EmbedBuilder()
               .setTitle('🔐 Vérification par Captcha')
               .setDescription(
                 [
-                  '➡️ Saisissez le texte vert affiché dans l’image ci-dessous.',
-                  '⏳ Vous avez 1 minute et 3 tentatives maximum.',
-                  '⚠️ En cas d’échec, réessayez après 5 minutes.',
+                  '➡️ Saisissez le texte vert ci-dessous.',
+                  '⏳ Temps : 1 minute, 3 tentatives max.',
+                  '⚠️ Échec : réessayez dans 5 min.',
                 ].join('\n'),
               )
               .setColor(Colors.Blurple)
-              .setImage('attachment://kaori-js-captcha.jpeg')
-              .setFooter({
-                text: 'Sécurité : Aucun mot de passe ou QR code requis.',
-              })
+              .setImage('attachment://captcha.jpeg')
               .setTimestamp(),
           ],
-          files: [
-            new AttachmentBuilder(image, { name: 'kaori-js-captcha.jpeg' }),
-          ],
-        })
-        .then(() => {
-          duringAuthentication.add(interaction.user.id);
-          interaction.followUp(
-            `${inlineCode('📩')} Vérifiez vos DM pour continuer.`,
-          );
+          files: [new AttachmentBuilder(image, { name: 'captcha.jpeg' })],
+        });
 
-          if (!interaction.user.dmChannel) return;
+        duringAuthentication.add(interaction.user.id);
+        await interaction.followUp({
+          content: `${inlineCode('📩')} Consultez vos DM.`,
+          ephemeral: true,
+        });
 
-          const collector = interaction.user.dmChannel.createMessageCollector({
-            filter: (v) => v.author.id === interaction.user.id,
-            time: Duration.toMS('1m'),
-            max: 3,
-          });
-
-          collector.on('collect', (tryMessage) => {
-            if (tryMessage.content !== text) return;
-
-            roles
-              .add(roleId, 'Vérification via captcha')
-              .then(() =>
-                interaction.user.send(
-                  `${inlineCode('✅')} Vérification réussie ! Bienvenue sur le serveur !`,
-                ),
-              )
-              .catch(() =>
-                interaction.user.send(
-                  `${inlineCode('❌')} Échec de l’attribution du rôle. Contactez un administrateur.`,
-                ),
-              )
-              .finally(() => collector.stop());
-          });
-
-          collector.on('end', (collection) => {
-            if (collection.size === 3) {
-              interaction.user.send(
-                `${inlineCode('❌')} Échec après 3 tentatives. Réessayez dans 5 minutes.`,
-              );
-              setTimeout(
-                () => duringAuthentication.delete(interaction.user.id),
-                Duration.toMS('5m'),
-              );
-            } else duringAuthentication.delete(interaction.user.id);
-          });
-        })
-        .catch(() =>
-          interaction.followUp({
-            content: `${inlineCode('❌')} Activez vos DM pour recevoir le captcha.`,
+        if (!interaction.user.dmChannel) {
+          duringAuthentication.delete(interaction.user.id);
+          return interaction.followUp({
+            content: `${inlineCode('❌')} DM non disponibles.`,
             ephemeral: true,
-          }),
-        );
+          });
+        }
+
+        const collector = interaction.user.dmChannel.createMessageCollector({
+          filter: (msg) => msg.author.id === interaction.user.id,
+          time: Duration.toMS('1m'),
+          max: 3,
+        });
+
+        collector.on('collect', async (msg) => {
+          if (msg.content !== text) return;
+
+          try {
+            await roles.add(roleId, 'Vérification via captcha');
+            await interaction.user.send(`${inlineCode('✅')} Vérification réussie !`);
+          } catch {
+            await interaction.user.send(`${inlineCode('❌')} Échec de l’attribution.`);
+          }
+          collector.stop();
+        });
+
+        collector.on('end', (collected) => {
+          if (collected.size >= 3) {
+            interaction.user.send(`${inlineCode('❌')} 3 échecs. Réessayez dans 5 min.`);
+            setTimeout(() => duringAuthentication.delete(interaction.user.id), Duration.toMS('5m'));
+          } else {
+            duringAuthentication.delete(interaction.user.id);
+          }
+        });
+      } catch {
+        duringAuthentication.delete(interaction.user.id);
+        await interaction.followUp({
+          content: `${inlineCode('❌')} Activez vos DM pour le captcha.`,
+          ephemeral: true,
+        });
+      }
     }
   },
 );
