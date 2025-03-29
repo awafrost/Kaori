@@ -18,7 +18,7 @@ export default new ChatInput(
   {
     name: 'mutelist',
     description: 'Voir les utilisateurs actuellement en isolement (Modérateurs uniquement)',
-    defaultMemberPermissions: PermissionFlagsBits.ModerateMembers,
+    defaultMemberPermissions: ['ModerateMembers'], // Restriction aux modérateurs
     dmPermission: false,
   },
   async (interaction: ChatInputCommandInteraction<CacheType>) => {
@@ -32,10 +32,16 @@ export default new ChatInput(
     }
 
     const now = Date.now();
+    // Filtrage des membres mutés avec une vérification explicite
     const mutedMembers = interaction.guild.members.cache.filter(
-      (member: GuildMember) => 
-        member.communicationDisabledUntilTimestamp && 
-        member.communicationDisabledUntilTimestamp > now
+      (member: GuildMember) => {
+        // Vérifie si le membre a un mute actif (communicationDisabledUntilTimestamp existe et est dans le futur)
+        return (
+          member.communicationDisabledUntilTimestamp !== null &&
+          member.communicationDisabledUntilTimestamp !== undefined &&
+          member.communicationDisabledUntilTimestamp > now
+        );
+      }
     );
     const mutedArray = Array.from(mutedMembers.values());
     const totalMuted = mutedArray.length;
@@ -44,10 +50,11 @@ export default new ChatInput(
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setTitle('Liste des membres en isolement')
+            .setTitle('🌙 Liste des membres en isolement')
             .setDescription('Aucun membre n’est actuellement en isolement.')
             .setColor(Colors.Orange)
             .setFooter({ text: 'Total des mutes: 0' })
+            .setTimestamp()
         ],
         ephemeral: true
       });
@@ -63,11 +70,12 @@ export default new ChatInput(
       const currentMuted = mutedArray.slice(start, end);
 
       const embed = new EmbedBuilder()
-        .setTitle('Liste des membres en isolement')
+        .setTitle('🌙 Liste des membres en isolement')
         .setColor(Colors.Orange)
         .setFooter({ 
           text: `Page ${page + 1}/${totalPages} | Total des mutes: ${totalMuted}` 
-        });
+        })
+        .setTimestamp();
 
       currentMuted.forEach((member: GuildMember) => {
         const timeRemaining = member.communicationDisabledUntilTimestamp! - now;
