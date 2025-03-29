@@ -14,6 +14,7 @@ import {
   GuildMemberRoleManager,
   PermissionFlagsBits,
   inlineCode,
+  TextChannel,
 } from 'discord.js';
 
 const duringAuthentication = new Set<string>();
@@ -27,7 +28,7 @@ type VerifyType = keyof typeof verifyTypes;
 const verifyCommand = new ChatInput(
   {
     name: 'verify',
-    description: 'Créer un panneau de vérification utilisant des rôles',
+    description: 'Créer un panneau de vérification dans un salon spécifié (Modérateurs uniquement)',
     options: [
       {
         name: 'type',
@@ -44,6 +45,12 @@ const verifyCommand = new ChatInput(
         description: 'Rôle à attribuer après une vérification réussie',
         type: ApplicationCommandOptionType.Role,
         required: true,
+      },
+      {
+        name: 'channel',
+        description: 'Salon où envoyer le panneau de vérification (par défaut : salon actuel)',
+        type: ApplicationCommandOptionType.Channel,
+        channelTypes: [0], // 0 = TextChannel
       },
       {
         name: 'description',
@@ -72,137 +79,154 @@ const verifyCommand = new ChatInput(
         type: ApplicationCommandOptionType.Attachment,
       },
     ],
-    defaultMemberPermissions: [
-      PermissionFlagsBits.ManageRoles,
-      PermissionFlagsBits.ManageChannels,
-    ],
+    // Correction : Utilisation des noms corrects en camelCase dans un tableau
+    defaultMemberPermissions: ['ManageRoles', 'ManageChannels'],
     dmPermission: false,
   },
-  (interaction) => {
+  async (interaction) => {
     if (!interaction.inCachedGuild()) return;
+
     const role = interaction.options.getRole('role', true);
-    if (
-      !interaction.guild.members.me?.permissions.has(
-        PermissionFlagsBits.ManageRoles,
-      )
-    )
+    const channelOption = interaction.options.getChannel('channel');
+    const targetChannel = channelOption
+      ? (interaction.guild.channels.cache.get(channelOption.id) as TextChannel)
+      : (interaction.channel as TextChannel);
+
+    if (!targetChannel || !targetChannel.isTextBased()) {
       return interaction.reply({
-        content: permissionField(permToText('ManageRoles'), {
-          label: 'Le bot n’a pas les permissions nécessaires',
-        }),
+        content: `${inlineCode('❌')} Salon invalide ou non textuel.`,
         ephemeral: true,
       });
-    if (role.managed || role.id === interaction.guild.roles.everyone.id)
+    }
+
+    if (
+      !interaction.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles) ||
+      !interaction.guild.members.me?.permissionsIn(targetChannel).has(PermissionFlagsBits.SendMessages)
+    ) {
+      return interaction.reply({
+        content: permissionField(
+          // Correction : Tableau de permissions
+          ['ManageRoles', 'SendMessages'],
+          { label: 'Le bot n’a pas les permissions nécessaires' }
+        ),
+        ephemeral: true,
+      });
+    }
+
+    if (role.managed || role.id === interaction.guild.roles.everyone.id) {
       return interaction.reply({
         content: `${inlineCode('❌')} Ce rôle ne peut pas être utilisé pour la vérification`,
         ephemeral: true,
       });
+    }
+
     if (
       !interaction.member.permissions.has(PermissionFlagsBits.Administrator) &&
       interaction.member.roles.highest.position < role.position
-    )
+    ) {
       return interaction.reply({
-        content: `${inlineCode(
-          '❌',
-        )} Vous ne pouvez pas utiliser un rôle supérieur au vôtre pour la vérification`,
+        content: `${inlineCode('❌')} Vous ne pouvez pas utiliser un rôle supérieur au vôtre.`,
         ephemeral: true,
       });
-    if (!role.editable)
+    }
+
+    if (!role.editable) {
       return interaction.reply({
-        content: `${inlineCode(
-          '❌',
-        )} Vous ne pouvez pas utiliser un rôle supérieur à celui du bot pour la vérification`,
+        content: `${inlineCode('❌')} Le bot ne peut pas attribuer ce rôle (position trop élevée).`,
         ephemeral: true,
       });
+    }
 
-    const verifyType: VerifyType = interaction.options.getString(
-      'type',
-      true,
-    ) as VerifyType;
+    const verifyType: VerifyType = interaction.options.getString('type', true) as VerifyType;
+    const customDescription = interaction.options.getString('description')?.replace('  ', '\n');
+    const defaultDescription = `Bienvenue sur ${interaction.guild.name} !\nVérifiez-vous pour accéder au serveur.`;
 
-    interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(`${inlineCode('✅')} Vérification : ${verifyTypes[verifyType]}`)
-          .setDescription(
-            interaction.options.getString('description')?.replace('  ', '\n') ||
-              null,
-          )
-          .setColor(interaction.options.getNumber('color') ?? Colors.Green)
-          .setImage(interaction.options.getAttachment('image')?.url || null)
-          .setFields({
-            name: 'Rôle à attribuer',
-            value: role.toString(),
-          }),
-      ],
+    const verifyEmbed = new EmbedBuilder()
+      .setTitle('🌟 Vérification des membres')
+      .setDescription(customDescription || defaultDescription)
+      .setColor(interaction.options.getNumber('color') ?? Colors.Green)
+      .setThumbnail(interaction.guild.iconURL() || null)
+      .setImage(interaction.options.getAttachment('image')?.url || null)
+      .addFields({
+        name: '🔑 Type de vérification',
+        value: verifyTypes[verifyType],
+        inline: true,
+      })
+      .setFooter({
+        text: `Serveur : ${interaction.guild.name}`,
+        iconURL: interaction.guild.iconURL() || undefined,
+      })
+      .setTimestamp();
+
+    await targetChannel.send({
+      embeds: [verifyEmbed],
       components: [
         new ActionRowBuilder<ButtonBuilder>().setComponents(
           new ButtonBuilder()
-            .setCustomId(`kaori-js:verify-${verifyType}`)
-            .setLabel('Vérifier')
-            .setStyle(ButtonStyle.Success),
+            .setCustomId(`kaori-js:verify-${verifyType}-${role.id}`)
+            .setLabel('Vérifier maintenant')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('✅'),
         ),
       ],
+    });
+
+    await interaction.reply({
+      content: `${inlineCode('✅')} Panneau de vérification envoyé dans ${targetChannel.toString()}.`,
+      ephemeral: true,
     });
   },
 );
 
 const verifyButton = new Button(
   {
-    customId: /^kaori-js:verify-(button|image)$/,
+    customId: /^kaori-js:verify-(button|image)-\d+$/,
   },
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
 
-    const roleId =
-      interaction.message.embeds[0]?.fields[0]?.value?.match(
-        /(?<=<@&)\d+(?=>)/,
-      )?.[0];
+    const [_, type, roleId] = interaction.customId.split('-');
     const roles = interaction.member.roles;
 
     if (duringAuthentication.has(interaction.user.id))
       return interaction.reply({
-        content: `${inlineCode(
-          '❌',
-        )} Vous êtes actuellement en cours de vérification. Vous ne pouvez pas commencer une nouvelle vérification tant que la précédente n’est pas terminée.`,
+        content: `${inlineCode('❌')} Vous êtes déjà en cours de vérification !`,
         ephemeral: true,
       });
     if (!roleId || !(roles instanceof GuildMemberRoleManager))
       return interaction.reply({
-        content: `${inlineCode('❌')} Un problème est survenu lors de la vérification.`,
+        content: `${inlineCode('❌')} Erreur lors de la vérification.`,
         ephemeral: true,
       });
     if (roles.cache.has(roleId))
       return interaction.reply({
-        content: `${inlineCode('✅')} Vous êtes déjà vérifié.`,
+        content: `${inlineCode('✅')} Vous êtes déjà vérifié !`,
         ephemeral: true,
       });
 
-    if (interaction.customId === 'kaori-js:verify-button') {
+    if (type === 'button') {
       roles
-        .add(roleId, 'Vérification')
+        .add(roleId, 'Vérification via bouton')
         .then(() =>
           interaction.reply({
-            content: `${inlineCode('✅')} Vérification réussie !`,
+            content: `${inlineCode('✅')} Vérification réussie ! Bienvenue !`,
             ephemeral: true,
           }),
         )
         .catch(() =>
           interaction.reply({
-            content: `${inlineCode(
-              '❌',
-            )} Échec de l’attribution du rôle. Veuillez contacter un administrateur du serveur.`,
+            content: `${inlineCode('❌')} Impossible d’attribuer le rôle. Contactez un administrateur.`,
             ephemeral: true,
           }),
         );
     }
 
-    if (interaction.customId === 'kaori-js:verify-image') {
+    if (type === 'image') {
       await interaction.deferReply({ ephemeral: true });
 
       const { image, text } = Captcha.create(
         { color: '#4b9d6e' },
-        {} ,
+        {},
         { amount: 5, blur: 25 },
         { rotate: 15, skew: true },
       );
@@ -211,17 +235,20 @@ const verifyButton = new Button(
         .send({
           embeds: [
             new EmbedBuilder()
+              .setTitle('🔐 Vérification par Captcha')
               .setDescription(
                 [
-                  'Veuillez envoyer le texte vert affiché dans l’image ci-dessous à ce DM.',
-                  '> ⚠️ Si le temps passe ou si vous faites plusieurs erreurs, une nouvelle vérification sera nécessaire.',
+                  '➡️ Saisissez le texte vert affiché dans l’image ci-dessous.',
+                  '⏳ Vous avez 1 minute et 3 tentatives maximum.',
+                  '⚠️ En cas d’échec, réessayez après 5 minutes.',
                 ].join('\n'),
               )
               .setColor(Colors.Blurple)
               .setImage('attachment://kaori-js-captcha.jpeg')
               .setFooter({
-                text: 'Kaori ne demande jamais de saisie de mot de passe ni de scan de QR code.',
-              }),
+                text: 'Sécurité : Aucun mot de passe ou QR code requis.',
+              })
+              .setTimestamp(),
           ],
           files: [
             new AttachmentBuilder(image, { name: 'kaori-js-captcha.jpeg' }),
@@ -230,7 +257,7 @@ const verifyButton = new Button(
         .then(() => {
           duringAuthentication.add(interaction.user.id);
           interaction.followUp(
-            `${inlineCode('📨')} Continuez la vérification en DM.`,
+            `${inlineCode('📩')} Vérifiez vos DM pour continuer.`,
           );
 
           if (!interaction.user.dmChannel) return;
@@ -245,17 +272,15 @@ const verifyButton = new Button(
             if (tryMessage.content !== text) return;
 
             roles
-              .add(roleId, 'Vérification')
+              .add(roleId, 'Vérification via captcha')
               .then(() =>
                 interaction.user.send(
-                  `${inlineCode('✅')} Vérification réussie !`,
+                  `${inlineCode('✅')} Vérification réussie ! Bienvenue sur le serveur !`,
                 ),
               )
               .catch(() =>
                 interaction.user.send(
-                  `${inlineCode(
-                    '❌',
-                  )} Échec de l’attribution du rôle. Veuillez contacter un administrateur du serveur.`,
+                  `${inlineCode('❌')} Échec de l’attribution du rôle. Contactez un administrateur.`,
                 ),
               )
               .finally(() => collector.stop());
@@ -264,11 +289,7 @@ const verifyButton = new Button(
           collector.on('end', (collection) => {
             if (collection.size === 3) {
               interaction.user.send(
-                `${inlineCode(
-                  '❌',
-                )} Vous avez échoué à la vérification après 3 tentatives. Vous pourrez réessayer dans ${inlineCode(
-                  '5 minutes',
-                )}.`,
+                `${inlineCode('❌')} Échec après 3 tentatives. Réessayez dans 5 minutes.`,
               );
               setTimeout(
                 () => duringAuthentication.delete(interaction.user.id),
@@ -277,14 +298,12 @@ const verifyButton = new Button(
             } else duringAuthentication.delete(interaction.user.id);
           });
         })
-        .catch(() => {
+        .catch(() =>
           interaction.followUp({
-            content: `${inlineCode(
-              '❌',
-            )} Vous devez activer les paramètres de DM pour recevoir les messages du bot.`,
+            content: `${inlineCode('❌')} Activez vos DM pour recevoir le captcha.`,
             ephemeral: true,
-          });
-        });
+          }),
+        );
     }
   },
 );
