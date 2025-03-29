@@ -9,72 +9,65 @@ import {
   ActionRowBuilder,
   PermissionFlagsBits,
   ButtonInteraction,
-  GuildMember,
+  GuildBan,
   InteractionCollector,
   MessageComponentInteraction
 } from 'discord.js';
 
 export default new ChatInput(
   {
-    name: 'mutelist',
-    description: 'Voir les utilisateurs actuellement en isolement (Modérateurs uniquement)',
-    defaultMemberPermissions: PermissionFlagsBits.ModerateMembers,
+    name: 'banlist',
+    description: 'Voir la liste des membres bannis (Modérateurs uniquement)',
+    defaultMemberPermissions: PermissionFlagsBits.BanMembers,
     dmPermission: false,
   },
   async (interaction: ChatInputCommandInteraction<CacheType>) => {
     if (!interaction.inCachedGuild()) return;
 
-    if (!interaction.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
+    if (!interaction.memberPermissions.has(PermissionFlagsBits.BanMembers)) {
       return interaction.reply({
-        content: 'Vous devez avoir la permission de modérer les membres pour utiliser cette commande.',
+        content: 'Vous devez avoir la permission de bannir des membres pour utiliser cette commande.',
         ephemeral: true
       });
     }
 
-    const now = Date.now();
-    const mutedMembers = interaction.guild.members.cache.filter(
-      (member: GuildMember) => 
-        member.communicationDisabledUntilTimestamp && 
-        member.communicationDisabledUntilTimestamp > now
-    );
-    const mutedArray = Array.from(mutedMembers.values());
-    const totalMuted = mutedArray.length;
+    const bans = await interaction.guild.bans.fetch();
+    const banArray = Array.from(bans.values());
+    const totalBans = banArray.length;
 
-    if (totalMuted === 0) {
+    if (totalBans === 0) {
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setTitle('Liste des membres en isolement')
-            .setDescription('Aucun membre n’est actuellement en isolement.')
-            .setColor(Colors.Orange)
-            .setFooter({ text: 'Total des mutes: 0' })
+            .setTitle('Liste des bannissements')
+            .setDescription('Aucun membre n’est actuellement banni.')
+            .setColor(Colors.Red)
+            .setFooter({ text: 'Total des bans: 0' })
         ],
         ephemeral: true
       });
     }
 
     const ITEMS_PER_PAGE = 20;
-    const totalPages = Math.ceil(totalMuted / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(totalBans / ITEMS_PER_PAGE);
     let currentPage = 0;
 
     const generateEmbed = (page: number) => {
       const start = page * ITEMS_PER_PAGE;
-      const end = Math.min(start + ITEMS_PER_PAGE, totalMuted);
-      const currentMuted = mutedArray.slice(start, end);
+      const end = Math.min(start + ITEMS_PER_PAGE, totalBans);
+      const currentBans = banArray.slice(start, end);
 
       const embed = new EmbedBuilder()
-        .setTitle('Liste des membres en isolement')
-        .setColor(Colors.Orange)
+        .setTitle('Liste des bannissements')
+        .setColor(Colors.Red)
         .setFooter({ 
-          text: `Page ${page + 1}/${totalPages} | Total des mutes: ${totalMuted}` 
+          text: `Page ${page + 1}/${totalPages} | Total des bans: ${totalBans}` 
         });
 
-      currentMuted.forEach((member: GuildMember) => {
-        const timeRemaining = member.communicationDisabledUntilTimestamp! - now;
-        const remainingSeconds = Math.floor(timeRemaining / 1000);
+      currentBans.forEach((ban: GuildBan) => {
         embed.addFields({
-          name: member.user.tag,
-          value: `ID: ${member.id}\nTemps restant: <t:${Math.floor(now / 1000) + remainingSeconds}:R>`,
+          name: ban.user.tag,
+          value: `ID: ${ban.user.id}\nRaison: ${ban.reason || 'Aucune raison spécifiée'}`,
         });
       });
 
@@ -83,13 +76,13 @@ export default new ChatInput(
 
     const generateButtons = (page: number) => {
       const previousButton = new ButtonBuilder()
-        .setCustomId('previous_mutelist')
+        .setCustomId('previous_banlist')
         .setLabel('Précédent')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(page === 0);
 
       const nextButton = new ButtonBuilder()
-        .setCustomId('next_mutelist')
+        .setCustomId('next_banlist')
         .setLabel('Suivant')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(page === totalPages - 1);
@@ -106,7 +99,7 @@ export default new ChatInput(
     });
 
     const filter = (i: MessageComponentInteraction): i is ButtonInteraction => 
-      (i.isButton() && (i.customId === 'previous_mutelist' || i.customId === 'next_mutelist'));
+      (i.isButton() && (i.customId === 'previous_banlist' || i.customId === 'next_banlist'));
 
     const collector = interaction.channel?.createMessageComponentCollector({
       filter,
@@ -121,7 +114,7 @@ export default new ChatInput(
         });
       }
 
-      currentPage = i.customId === 'next_mutelist' ? currentPage + 1 : currentPage - 1;
+      currentPage = i.customId === 'next_banlist' ? currentPage + 1 : currentPage - 1;
       await i.update({
         embeds: [generateEmbed(currentPage)],
         components: [generateButtons(currentPage)]
