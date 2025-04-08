@@ -3,7 +3,7 @@ import { DiscordEventBuilder } from '@modules/events';
 import { Events, EmbedBuilder, Colors, ChannelType, TextChannel } from 'discord.js';
 
 const GuildCache = new Set<string>();
-const LOG_CHANNEL_ID = 'ID_DU_SALON_DE_LOGS'; // Remplacez par l'ID réel
+const LOG_CHANNEL_ID = '1351312330759344158'; // Remplacez par l'ID réel
 
 const onGuildCreate = new DiscordEventBuilder({
   type: Events.GuildCreate,
@@ -42,9 +42,9 @@ const onGuildCreate = new DiscordEventBuilder({
         { name: 'ID', value: guild.id, inline: true },
         { name: 'Membres', value: guild.memberCount?.toString() || 'Inconnu', inline: true },
         { name: 'Propriétaire', value: guild.ownerId ? `<@${guild.ownerId}> (${guild.ownerId})` : 'Inconnu', inline: true },
-        { name: 'Invitation', value: invite ? `[Lien](${invite.url})` : 'Non générée', inline: true },
-        { name: 'Date', value: new Date().toLocaleString(), inline: true }
+        { name: 'Invitation', value: invite ? `[Lien](${invite.url})` : 'Non générée', inline: true }
       )
+      .setTimestamp(new Date()) // Ajoute le timestamp Discord
       .setThumbnail(guild.iconURL());
 
     const logChannel = guild.client.channels.cache.get(LOG_CHANNEL_ID);
@@ -82,7 +82,6 @@ const onGuildDelete = new DiscordEventBuilder({
       console.error(`[GuildDelete] Erreur lors de la suppression du serveur ${guild.id} de la base de données:`, error);
     });
 
-    // Créer l'embed avec les informations disponibles
     const logEmbed = new EmbedBuilder()
       .setTitle('Serveur quitté')
       .setColor(Colors.Red)
@@ -90,12 +89,11 @@ const onGuildDelete = new DiscordEventBuilder({
         { name: 'Nom', value: guild.name ?? 'Inconnu', inline: true },
         { name: 'ID', value: guild.id, inline: true },
         { name: 'Membres', value: guild.memberCount?.toString() ?? 'Inconnu', inline: true },
-        { name: 'Propriétaire', value: guild.ownerId ? `<@${guild.ownerId}> (${guild.ownerId})` : 'Inconnu', inline: true },
-        { name: 'Date', value: new Date().toLocaleString(), inline: true }
+        { name: 'Propriétaire', value: guild.ownerId ? `<@${guild.ownerId}> (${guild.ownerId})` : 'Inconnu', inline: true }
       )
+      .setTimestamp(new Date()) // Ajoute le timestamp Discord
       .setThumbnail(guild.iconURL() ?? null);
 
-    // Envoyer le log
     const logChannel = guild.client.channels.cache.get(LOG_CHANNEL_ID);
     if (logChannel?.type === ChannelType.GuildText) {
       try {
