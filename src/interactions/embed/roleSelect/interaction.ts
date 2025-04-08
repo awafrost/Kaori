@@ -16,18 +16,30 @@ const roleSelect = new SelectMenu(
     const roles = interaction.member.roles;
     let error = false;
 
-    await roles
-      .remove(
-        interaction.component.options
-          .map((opt) => opt.value)
-          .filter((opt) => !interaction.values.includes(opt)),
-      )
-      // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-      .catch(() => (error = true));
-    // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-    await roles.add(interaction.values).catch(() => (error = true));
+    // Stocker les rôles actuels avant modification
+    const previousRoles = new Set(roles.cache.map(role => role.id));
+    const availableOptions = interaction.component.options.map(opt => opt.value);
+    const selectedRoles = interaction.values;
 
-    if (error)
+    // Rôles à supprimer (présents dans les options mais non sélectionnés)
+    const rolesToRemove = availableOptions.filter(
+      opt => !selectedRoles.includes(opt) && previousRoles.has(opt)
+    );
+    
+    // Rôles à ajouter (sélectionnés mais pas encore présents)
+    const rolesToAdd = selectedRoles.filter(
+      roleId => !previousRoles.has(roleId)
+    );
+
+    // Appliquer les modifications
+    await roles
+      .remove(rolesToRemove)
+      .catch(() => (error = true));
+    await roles
+      .add(rolesToAdd)
+      .catch(() => (error = true));
+
+    if (error) {
       return interaction.followUp({
         embeds: [
           new EmbedBuilder()
@@ -36,11 +48,21 @@ const roleSelect = new SelectMenu(
         ],
         ephemeral: true,
       });
+    }
+
+    // Construire le message de l'embed
+    const embedDescription = [
+      '`✅` Les rôles ont été mis à jour !',
+      rolesToAdd.length > 0 ? `**Ajoutés :** ${rolesToAdd.map(id => `<@&${id}>`).join(', ')}` : '',
+      rolesToRemove.length > 0 ? `**Supprimés :** ${rolesToRemove.map(id => `<@&${id}>`).join(', ')}` : ''
+    ]
+    .filter(line => line !== '')
+    .join('\n');
 
     await interaction.followUp({
       embeds: [
         new EmbedBuilder()
-          .setDescription('`✅` Les rôles ont été mis à jour !')
+          .setDescription(embedDescription)
           .setColor(Colors.Green),
       ],
       ephemeral: true,
