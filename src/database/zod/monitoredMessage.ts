@@ -6,6 +6,7 @@ export const MonitoredMessage = z.object({
   channelId: Snowflake,
   messageId: Snowflake,
   inviteCode: z.string(),
+  guildName: z.string().optional(),
   createdAt: z.date().optional(),
 });
 

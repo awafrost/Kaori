@@ -9,6 +9,7 @@ const MonitoredMessageSchema = new Schema<z.infer<typeof MonitoredMessage>>({
   channelId: Schema.Types.String,
   messageId: Schema.Types.String,
   inviteCode: Schema.Types.String,
+  guildName: Schema.Types.String,
   createdAt: { type: Schema.Types.Date, default: Date.now },
 });
 

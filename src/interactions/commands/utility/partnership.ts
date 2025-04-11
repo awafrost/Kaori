@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { Blacklist, GuildConfig } from '@models';
+import { Blacklist, GuildConfig, MonitoredMessage } from '@models';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -138,18 +138,45 @@ export default new ChatInput(
           return;
         }
 
-        // Fetch guild names for each blacklisted server ID
-        const guildPromises = blacklist.map(async (entry) => {
-          try {
-            const guild = await interaction.client.guilds.fetch(entry.blacklistedServerId);
-            return `**Serveur:** ${guild.name} (\`${entry.blacklistedServerId}\`)\n**Raison:** ${entry.reason}`;
-          } catch (error) {
-            // If the bot can't fetch the guild (e.g., not in it), show only the ID
-            return `**Serveur:** \`${entry.blacklistedServerId}\` (Nom inconnu)\n**Raison:** ${entry.reason}`;
-          }
-        });
+        // Fetch guild names for each blacklisted server
+        const guildDescriptions = await Promise.all(
+          blacklist.map(async (entry) => {
+            let guildName: string | null = null;
 
-        const guildDescriptions = await Promise.all(guildPromises);
+            // Step 1: Check MonitoredMessage for invite data
+            const monitored = await MonitoredMessage.findOne({
+              guildId: interaction.guild.id,
+              messageId: { $exists: true }, // Ensure we only get valid entries
+            }).sort({ createdAt: -1 }); // Get the most recent one
+
+            if (monitored) {
+              try {
+                const invite = await interaction.client.fetchInvite(monitored.inviteCode);
+                if (invite.guild?.id === entry.blacklistedServerId) {
+                  guildName = invite.guild.name;
+                }
+              } catch (error) {
+                // Invite might be invalid; proceed to next step
+              }
+            }
+
+            // Step 2: If no invite data, try fetching guild directly
+            if (!guildName) {
+              try {
+                const guild = await interaction.client.guilds.fetch(entry.blacklistedServerId);
+                guildName = guild.name;
+              } catch (error) {
+                // Bot isn’t in the guild; guildName stays null
+              }
+            }
+
+            // Step 3: Build description with name or ID
+            const displayName = guildName
+              ? `${guildName} (\`${entry.blacklistedServerId}\`)`
+              : `\`${entry.blacklistedServerId}\` (Nom inconnu)`;
+            return `**Serveur:** ${displayName}\n**Raison:** ${entry.reason}`;
+          }),
+        );
 
         await interaction.reply({
           embeds: [

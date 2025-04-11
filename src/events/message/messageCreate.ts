@@ -67,11 +67,11 @@ export default new DiscordEventBuilder({
 
         // Create embed with safe access to embedConfig
         const embed = new EmbedBuilder()
-          .setTitle(config.embedConfig?.title || 'Partenariat') // Fallback if undefined
-          .setDescription(config.embedConfig?.description || 'Nouveau partenariat !') // Fallback if undefined
+          .setTitle(config.embedConfig?.title || 'Partenariat')
+          .setDescription(config.embedConfig?.description || 'Nouveau partenariat !')
           .setColor(Colors.DarkGrey)
-          .setImage(config.embedConfig?.image || null) // Null if undefined
-          .setThumbnail(config.embedConfig?.thumbnail || null) // Null if undefined
+          .setImage(config.embedConfig?.image || null)
+          .setThumbnail(config.embedConfig?.thumbnail || null)
           .setFooter({ text: `Serveur: ${invite.guild!.name}, Membres: ${invite.memberCount}` });
 
         await message.channel.send({
@@ -84,6 +84,7 @@ export default new DiscordEventBuilder({
           channelId: message.channel.id,
           messageId: message.id,
           inviteCode,
+          guildName: invite.guild!.name, // Store guild name
         });
         await monitoredMessage.save();
 
