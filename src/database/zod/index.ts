@@ -9,6 +9,9 @@ import JoinMessageConfig from './joinMessageConfig';
 import LeaveMessageConfig from './leaveMessageConfig';
 import MessageExpandConfig from './messageExpandConfig';
 import ReportConfig from './reportConfig';
+import { Blacklist } from './blacklist';
+import { GuildConfig } from './guildConfig';
+import { MonitoredMessage } from './monitoredMessage';
 export * as Utils from './util';
 
 export {
@@ -23,4 +26,7 @@ export {
   LeaveMessageConfig,
   MessageExpandConfig,
   ReportConfig,
+  Blacklist,
+  GuildConfig,
+  MonitoredMessage,
 };
