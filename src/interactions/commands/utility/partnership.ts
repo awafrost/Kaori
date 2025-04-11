@@ -138,18 +138,24 @@ export default new ChatInput(
           return;
         }
 
+        // Fetch guild names for each blacklisted server ID
+        const guildPromises = blacklist.map(async (entry) => {
+          try {
+            const guild = await interaction.client.guilds.fetch(entry.blacklistedServerId);
+            return `**Serveur:** ${guild.name} (\`${entry.blacklistedServerId}\`)\n**Raison:** ${entry.reason}`;
+          } catch (error) {
+            // If the bot can't fetch the guild (e.g., not in it), show only the ID
+            return `**Serveur:** \`${entry.blacklistedServerId}\` (Nom inconnu)\n**Raison:** ${entry.reason}`;
+          }
+        });
+
+        const guildDescriptions = await Promise.all(guildPromises);
+
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setTitle('Serveurs blacklistés')
-              .setDescription(
-                blacklist
-                  .map(
-                    (entry) =>
-                      `**Serveur ID:** ${entry.blacklistedServerId}\n**Raison:** ${entry.reason}`,
-                  )
-                  .join('\n\n'),
-              )
+              .setDescription(guildDescriptions.join('\n\n'))
               .setColor(Colors.DarkGrey)
               .setTimestamp(),
           ],
