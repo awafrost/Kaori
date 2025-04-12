@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { Blacklist, GuildConfig, MonitoredMessage } from '@models';
+import { Blacklist, GuildConfig, MonitoredMessage, Partnership } from '@models';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -9,6 +9,18 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
 } from 'discord.js';
+
+// Interface pour typer les documents Partnership
+interface PartnershipDocument {
+  guildId: string;
+  partnerGuildId: string;
+  userId: string;
+  createdAt: Date;
+  messageId?: string;
+}
+
+// Liste des IDs autorisés pour la blacklist globale
+const GLOBAL_BLACKLIST_AUTHORIZED_IDS = ['499447456678019072', '1055998924206379099']; // Remplacez par les IDs réels
 
 export default new ChatInput(
   {
@@ -57,6 +69,38 @@ export default new ChatInput(
               },
             ],
           },
+          {
+            name: 'globaladd',
+            description: 'Ajouter un serveur à la blacklist globale (réservé)',
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'serverid',
+                description: 'ID du serveur à blacklister globalement',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+              {
+                name: 'reason',
+                description: 'Raison du blacklist global',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+            ],
+          },
+          {
+            name: 'globalremove',
+            description: 'Retirer un serveur de la blacklist globale (réservé)',
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'serverid',
+                description: 'ID du serveur à retirer de la blacklist globale',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+            ],
+          },
         ],
       },
       {
@@ -88,20 +132,58 @@ export default new ChatInput(
               },
               {
                 name: 'alertuser',
-                description: 'Utilisateur à alerter en cas d\'invitation invalide',
+                description: "Utilisateur à alerter en cas d'invitation invalide",
                 type: ApplicationCommandOptionType.User,
                 required: true,
               },
               {
                 name: 'title',
-                description: 'Titre pour l\'embed',
+                description: "Titre pour l'embed",
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
               {
                 name: 'description',
-                description: 'Description pour l\'embed',
+                description: "Description pour l'embed",
                 type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'stats',
+        description: 'Voir les statistiques des partenariats',
+        type: ApplicationCommandOptionType.SubcommandGroup,
+        options: [
+          {
+            name: 'leaderboard',
+            description: 'Afficher le classement des partenariats',
+            type: ApplicationCommandOptionType.Subcommand,
+          },
+          {
+            name: 'user',
+            description: "Voir les statistiques d'une personne sur ce serveur",
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'user',
+                description: 'Utilisateur à analyser',
+                type: ApplicationCommandOptionType.User,
+                required: true,
+              },
+            ],
+          },
+          {
+            name: 'global',
+            description: "Voir tous les partenariats d'une personne (tous serveurs)",
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'user',
+                description: 'Utilisateur à analyser',
+                type: ApplicationCommandOptionType.User,
                 required: true,
               },
             ],
@@ -121,9 +203,10 @@ export default new ChatInput(
 
     // Group: blacklist
     if (subcommandGroup === 'blacklist') {
-      // Subcommand: view
       if (subcommand === 'view') {
-        const blacklist = await Blacklist.find({ guildId: interaction.guild.id });
+        const blacklist = await Blacklist.find({
+          $or: [{ guildId: interaction.guild.id }, { isGlobal: true }],
+        });
 
         if (blacklist.length === 0) {
           await interaction.reply({
@@ -138,43 +221,16 @@ export default new ChatInput(
           return;
         }
 
-        // Fetch guild names for each blacklisted server
         const guildDescriptions = await Promise.all(
           blacklist.map(async (entry) => {
             let guildName: string | null = null;
-
-            // Step 1: Check MonitoredMessage for invite data
-            const monitored = await MonitoredMessage.findOne({
-              guildId: interaction.guild.id,
-              messageId: { $exists: true }, // Ensure we only get valid entries
-            }).sort({ createdAt: -1 }); // Get the most recent one
-
-            if (monitored) {
-              try {
-                const invite = await interaction.client.fetchInvite(monitored.inviteCode);
-                if (invite.guild?.id === entry.blacklistedServerId) {
-                  guildName = invite.guild.name;
-                }
-              } catch (error) {
-                // Invite might be invalid; proceed to next step
-              }
+            try {
+              const guild = await interaction.client.guilds.fetch(entry.blacklistedServerId);
+              guildName = guild.name;
+            } catch {
+              guildName = 'Nom inconnu';
             }
-
-            // Step 2: If no invite data, try fetching guild directly
-            if (!guildName) {
-              try {
-                const guild = await interaction.client.guilds.fetch(entry.blacklistedServerId);
-                guildName = guild.name;
-              } catch (error) {
-                // Bot isn’t in the guild; guildName stays null
-              }
-            }
-
-            // Step 3: Build description with name or ID
-            const displayName = guildName
-              ? `${guildName} (\`${entry.blacklistedServerId}\`)`
-              : `\`${entry.blacklistedServerId}\` (Nom inconnu)`;
-            return `**Serveur:** ${displayName}\n**Raison:** ${entry.reason}`;
+            return `**Serveur:** ${guildName} (\`${entry.blacklistedServerId}\`)\n**Raison:** ${entry.reason}\n**Global:** ${entry.isGlobal ? 'Oui' : 'Non'}`;
           }),
         );
 
@@ -188,10 +244,7 @@ export default new ChatInput(
           ],
           ephemeral: true,
         });
-      }
-
-      // Subcommand: add
-      else if (subcommand === 'add') {
+      } else if (subcommand === 'add') {
         const serverId = interaction.options.getString('serverid', true);
         const reason = interaction.options.getString('reason', true);
 
@@ -233,10 +286,7 @@ export default new ChatInput(
           ],
           ephemeral: true,
         });
-      }
-
-      // Subcommand: remove
-      else if (subcommand === 'remove') {
+      } else if (subcommand === 'remove') {
         const serverId = interaction.options.getString('serverid', true);
 
         const blacklistEntry = await Blacklist.findOne({
@@ -271,12 +321,114 @@ export default new ChatInput(
           ],
           ephemeral: true,
         });
+      } else if (subcommand === 'globaladd') {
+        if (!GLOBAL_BLACKLIST_AUTHORIZED_IDS.includes(interaction.user.id)) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Permission refusée')
+                .setDescription('Vous n\'êtes pas autorisé à ajouter une blacklist globale.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const serverId = interaction.options.getString('serverid', true);
+        const reason = interaction.options.getString('reason', true);
+
+        const existingEntry = await Blacklist.findOne({
+          blacklistedServerId: serverId,
+          isGlobal: true,
+        });
+
+        if (existingEntry) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Serveur déjà blacklisté globalement')
+                .setDescription(`Le serveur \`${serverId}\` est déjà dans la blacklist globale.`)
+                .addFields({ name: 'Raison', value: existingEntry.reason })
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const blacklistEntry = new Blacklist({
+          blacklistedServerId: serverId,
+          reason,
+          blacklistedBy: interaction.user.id,
+          isGlobal: true,
+        });
+
+        await blacklistEntry.save();
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('Serveur ajouté à la blacklist globale')
+              .setDescription(`Le serveur \`${serverId}\` a été ajouté à la blacklist globale.`)
+              .addFields({ name: 'Raison', value: reason })
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+      } else if (subcommand === 'globalremove') {
+        if (!GLOBAL_BLACKLIST_AUTHORIZED_IDS.includes(interaction.user.id)) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Permission refusée')
+                .setDescription('Vous n\'êtes pas autorisé à retirer une blacklist globale.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const serverId = interaction.options.getString('serverid', true);
+
+        const blacklistEntry = await Blacklist.findOne({
+          blacklistedServerId: serverId,
+          isGlobal: true,
+        });
+
+        if (!blacklistEntry) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Serveur non trouvé')
+                .setDescription(`Le serveur \`${serverId}\` n'est pas dans la blacklist globale.`)
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        await Blacklist.deleteOne({
+          blacklistedServerId: serverId,
+          isGlobal: true,
+        });
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('Serveur retiré de la blacklist globale')
+              .setDescription(`Le serveur \`${serverId}\` a été retiré de la blacklist globale.`)
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
       }
     }
 
     // Group: configure
     else if (subcommandGroup === 'configure') {
-      // Subcommand: partner
       if (subcommand === 'partner') {
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
@@ -299,10 +451,7 @@ export default new ChatInput(
           components: [row],
           ephemeral: true,
         });
-      }
-
-      // Subcommand: portal
-      else if (subcommand === 'portal') {
+      } else if (subcommand === 'portal') {
         const categoryId = interaction.options.getString('category', true);
         const threshold = interaction.options.getInteger('threshold', true);
         const alertUser = interaction.options.getUser('alertuser', true);
@@ -349,6 +498,122 @@ export default new ChatInput(
                 { name: 'Utilisateur Alerté', value: alertUser.tag, inline: true },
                 { name: 'Titre de l\'Embed', value: title, inline: true },
                 { name: 'Description de l\'Embed', value: description, inline: true },
+              )
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+      }
+    }
+
+    // Group: stats
+    else if (subcommandGroup === 'stats') {
+      if (subcommand === 'leaderboard') {
+        const partnerships = await Partnership.aggregate([
+          { $match: { guildId: interaction.guild.id } },
+          { $group: { _id: '$userId', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 10 },
+        ]);
+
+        if (partnerships.length === 0) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Classement des partenariats')
+                .setDescription('Aucun partenariat n\'a été enregistré sur ce serveur.')
+                .setColor(Colors.DarkGrey),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const leaderboard = await Promise.all(
+          partnerships.map(async (entry: { _id: string; count: number }, index: number) => {
+            const user = await interaction.client.users.fetch(entry._id).catch(() => null);
+            return `${index + 1}. **${user?.tag || 'Utilisateur inconnu'}** - ${entry.count} partenariats`;
+          }),
+        );
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('Classement des partenariats')
+              .setDescription(leaderboard.join('\n'))
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+      } else if (subcommand === 'user') {
+        const user = interaction.options.getUser('user', true);
+        const partnerships = await Partnership.find({
+          guildId: interaction.guild.id,
+          userId: user.id,
+        });
+
+        if (partnerships.length === 0) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle(`Statistiques de ${user.tag}`)
+                .setDescription(`${user.tag} n'a effectué aucun partenariat sur ce serveur.`)
+                .setColor(Colors.DarkGrey),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const partnerGuilds = await Promise.all(
+          partnerships.map(async (p: PartnershipDocument) => {
+            const guild = await interaction.client.guilds.fetch(p.partnerGuildId).catch(() => null);
+            return guild?.name || p.partnerGuildId;
+          }),
+        );
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`Statistiques de ${user.tag}`)
+              .setDescription(
+                `${user.tag} a effectué **${partnerships.length}** partenariats sur ce serveur.\n\n**Serveurs partenaires :**\n${partnerGuilds.join('\n')}`,
+              )
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+      } else if (subcommand === 'global') {
+        const user = interaction.options.getUser('user', true);
+        const partnerships = await Partnership.find({ userId: user.id });
+
+        if (partnerships.length === 0) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle(`Partenariats globaux de ${user.tag}`)
+                .setDescription(`${user.tag} n'a effectué aucun partenariat.`)
+                .setColor(Colors.DarkGrey),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const guildStats = await Promise.all(
+          partnerships.map(async (p: PartnershipDocument) => {
+            const guild = await interaction.client.guilds.fetch(p.guildId).catch(() => null);
+            const partnerGuild = await interaction.client.guilds.fetch(p.partnerGuildId).catch(() => null);
+            return `**Serveur:** ${guild?.name || p.guildId}\n**Partenaire:** ${partnerGuild?.name || p.partnerGuildId}`;
+          }),
+        );
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`Partenariats globaux de ${user.tag}`)
+              .setDescription(
+                `${user.tag} a effectué **${partnerships.length}** partenariats au total.\n\n${guildStats.join('\n\n')}`,
               )
               .setColor(Colors.Green),
           ],

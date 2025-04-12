@@ -5,10 +5,11 @@ import type { Blacklist } from '../zod';
 const { Schema, model, models } = mongoose;
 
 const BlacklistSchema = new Schema<z.infer<typeof Blacklist>>({
-  guildId: { type: Schema.Types.String, required: true },
+  guildId: Schema.Types.String,
   blacklistedServerId: { type: Schema.Types.String, required: true },
   reason: { type: Schema.Types.String, required: true },
   blacklistedBy: { type: Schema.Types.String, required: true },
+  isGlobal: { type: Schema.Types.Boolean, default: false },
 });
 
 export default models?.Blacklist

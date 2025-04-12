@@ -1,4 +1,4 @@
-import { Blacklist, GuildConfig, MonitoredMessage } from '@models';
+import { Blacklist, GuildConfig, MonitoredMessage, Partnership } from '@models';
 import { DiscordEventBuilder } from '@modules/events';
 import { Colors, EmbedBuilder, Events, type Message } from 'discord.js';
 
@@ -33,10 +33,12 @@ export default new DiscordEventBuilder({
       try {
         const invite = await message.client.fetchInvite(inviteCode);
 
-        // Check blacklist
+        // Check blacklist (local and global)
         const blacklistedServer = await Blacklist.findOne({
-          guildId: message.guild.id,
-          blacklistedServerId: invite.guild!.id,
+          $or: [
+            { guildId: message.guild.id, blacklistedServerId: invite.guild!.id },
+            { isGlobal: true, blacklistedServerId: invite.guild!.id },
+          ],
         });
         if (blacklistedServer) {
           await message.delete();
@@ -69,12 +71,12 @@ export default new DiscordEventBuilder({
         const embed = new EmbedBuilder()
           .setTitle(config.embedConfig?.title || 'Partenariat')
           .setDescription(config.embedConfig?.description || 'Nouveau partenariat !')
-          .setColor(Colors.DarkGrey)
+          .setColor('#131416')
           .setImage(config.embedConfig?.image || null)
           .setThumbnail(config.embedConfig?.thumbnail || null)
           .setFooter({ text: `Serveur: ${invite.guild!.name}, Membres: ${invite.memberCount}` });
 
-        await message.channel.send({
+        const partnershipMessage = await message.channel.send({
           content: config.embedConfig?.mentionRoleId ? `<@&${config.embedConfig.mentionRoleId}>` : '',
           embeds: [embed],
         });
@@ -82,11 +84,20 @@ export default new DiscordEventBuilder({
         const monitoredMessage = new MonitoredMessage({
           guildId: message.guild.id,
           channelId: message.channel.id,
-          messageId: message.id,
+          messageId: partnershipMessage.id,
           inviteCode,
-          guildName: invite.guild!.name, // Store guild name
+          guildName: invite.guild!.name,
         });
         await monitoredMessage.save();
+
+        // Save partnership
+        const partnership = new Partnership({
+          guildId: message.guild.id,
+          partnerGuildId: invite.guild!.id,
+          userId: message.author.id,
+          messageId: partnershipMessage.id,
+        });
+        await partnership.save();
 
         validInvite = true;
 
@@ -102,7 +113,8 @@ export default new DiscordEventBuilder({
               );
               setTimeout(() => warning.delete().catch(() => {}), 60000);
 
-              await MonitoredMessage.deleteOne({ messageId: message.id });
+              await MonitoredMessage.deleteOne({ messageId: partnershipMessage.id });
+              await Partnership.deleteOne({ messageId: partnershipMessage.id });
             }
           }
         }, 60000);

@@ -12,6 +12,8 @@ import ReportConfig from './reportConfig';
 import Blacklist from './blacklist';
 import GuildConfig from './guildConfig';
 import MonitoredMessage from './monitoredMessage';
+import Partnership from './partnership'; // Ajout explicite
+
 export * as Utils from './util';
 
 export {
@@ -29,4 +31,5 @@ export {
   Blacklist,
   GuildConfig,
   MonitoredMessage,
+  Partnership,
 };
