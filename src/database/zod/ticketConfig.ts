@@ -12,9 +12,9 @@ export const TicketConfig = z.object({
         customId: z.string(),
         embedTitle: z.string().nullable().optional(),
         embedDescription: z.string().nullable().optional(),
+        style: z.enum(['Primary', 'Secondary', 'Success', 'Danger']).optional(),
       }),
     )
-    .max(3)
     .default([]), // Tableau vide par défaut
   premiumUserId: Snowflake.nullable().optional(),
   embedTitle: z.string().nullable().optional(), // Titre de l'embed principal
@@ -23,4 +23,4 @@ export const TicketConfig = z.object({
   createdAt: z.date().optional(),
 });
 
-export type TicketConfig = z.infer<typeof TicketConfig>;
+export type TicketConfigType = z.infer<typeof TicketConfig>;

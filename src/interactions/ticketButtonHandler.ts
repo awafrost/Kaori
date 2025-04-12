@@ -1,5 +1,5 @@
 import { Button } from '@akki256/discord-interaction';
-import { Ticket, TicketConfig, TicketTranscript } from '@models';
+import { Ticket, TicketConfig } from '@models';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 
 const ticketCreateButton = new Button(
-  { customId: /^ticket_create_[0-2]_[0-9]+$/ },
+  { customId: /^ticket_create_[0-4]_[0-9]+$/ }, // Updated regex for 0-4 (up to 5 buttons)
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
 
@@ -117,27 +117,6 @@ const ticketCloseButton = new Button(
         ephemeral: true,
       });
       return;
-    }
-
-    // Enregistrer la transcription
-    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
-    if (messages) {
-      const transcriptMessages = messages
-        .filter((msg) => !msg.author.bot)
-        .map((msg) => ({
-          authorId: msg.author.id,
-          content: msg.content || '[Aucun contenu]',
-          timestamp: msg.createdAt,
-        }))
-        .reverse();
-
-      const transcript = new TicketTranscript({
-        guildId: interaction.guild.id,
-        ticketId: interaction.channelId,
-        userId: ticket.userId,
-        messages: transcriptMessages,
-      });
-      await transcript.save();
     }
 
     await interaction.channel?.edit({
@@ -270,27 +249,6 @@ const ticketDeleteButton = new Button(
         ephemeral: true,
       });
       return;
-    }
-
-    // Enregistrer la transcription
-    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
-    if (messages) {
-      const transcriptMessages = messages
-        .filter((msg) => !msg.author.bot)
-        .map((msg) => ({
-          authorId: msg.author.id,
-          content: msg.content || '[Aucun contenu]',
-          timestamp: msg.createdAt,
-        }))
-        .reverse();
-
-      const transcript = new TicketTranscript({
-        guildId: interaction.guild.id,
-        ticketId: interaction.channelId,
-        userId: ticket.userId,
-        messages: transcriptMessages,
-      });
-      await transcript.save();
     }
 
     await interaction.reply({

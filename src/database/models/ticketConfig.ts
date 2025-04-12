@@ -1,6 +1,6 @@
 import mongoose, { type Model } from 'mongoose';
 import type { z } from 'zod';
-import type { TicketConfig } from '../zod';
+import { TicketConfig } from '../zod';
 
 const { Schema, model, models } = mongoose;
 
@@ -14,6 +14,7 @@ const TicketConfigSchema = new Schema<z.infer<typeof TicketConfig>>({
       customId: Schema.Types.String,
       embedTitle: Schema.Types.String,
       embedDescription: Schema.Types.String,
+      style: Schema.Types.String, // Added style field
     },
   ],
   premiumUserId: Schema.Types.String,

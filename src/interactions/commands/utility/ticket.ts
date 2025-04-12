@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { TicketConfig, TicketTranscript } from '@models';
+import { TicketConfig } from '@models';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -9,6 +9,9 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
 } from 'discord.js';
+
+// Define the button style type to match the schema
+type ButtonStyleType = 'Primary' | 'Secondary' | 'Success' | 'Danger';
 
 export default new ChatInput(
   {
@@ -22,12 +25,12 @@ export default new ChatInput(
         options: [
           {
             name: 'setup',
-            description: 'Configurer le salon, la catégorie et l\'embed des tickets',
+            description: "Configurer le salon, la catégorie et l'embed des tickets",
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
                 name: 'channel',
-                description: 'Salon où envoyer l\'embed des tickets',
+                description: "Salon où envoyer l'embed des tickets",
                 type: ApplicationCommandOptionType.Channel,
                 required: true,
               },
@@ -39,13 +42,13 @@ export default new ChatInput(
               },
               {
                 name: 'embed_title',
-                description: 'Titre de l\'embed des tickets',
+                description: "Titre de l'embed des tickets",
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
               {
                 name: 'embed_description',
-                description: 'Description de l\'embed des tickets',
+                description: "Description de l'embed des tickets",
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
@@ -59,7 +62,7 @@ export default new ChatInput(
           },
           {
             name: 'send',
-            description: 'Envoyer l\'embed des tickets dans le salon configuré',
+            description: "Envoyer l'embed des tickets dans le salon configuré",
             type: ApplicationCommandOptionType.Subcommand,
           },
         ],
@@ -82,14 +85,53 @@ export default new ChatInput(
               },
               {
                 name: 'title',
-                description: 'Titre de l\'embed du ticket',
+                description: "Titre de l'embed du ticket",
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
               {
                 name: 'description',
-                description: 'Description de l\'embed du ticket',
+                description: "Description de l'embed du ticket",
                 type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+              {
+                name: 'style',
+                description: 'Style du bouton',
+                type: ApplicationCommandOptionType.String,
+                choices: [
+                  { name: 'Bleu (Primary)', value: 'Primary' },
+                  { name: 'Gris (Secondary)', value: 'Secondary' },
+                  { name: 'Vert (Success)', value: 'Success' },
+                  { name: 'Rouge (Danger)', value: 'Danger' },
+                ],
+                required: false,
+              },
+            ],
+          },
+          {
+            name: 'edit',
+            description: 'Modifier le style d’un bouton existant',
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'button_index',
+                description: 'Index du bouton à modifier (1 à 5)',
+                type: ApplicationCommandOptionType.Integer,
+                required: true,
+                min_value: 1,
+                max_value: 5,
+              },
+              {
+                name: 'style',
+                description: 'Nouveau style du bouton',
+                type: ApplicationCommandOptionType.String,
+                choices: [
+                  { name: 'Bleu (Primary)', value: 'Primary' },
+                  { name: 'Gris (Secondary)', value: 'Secondary' },
+                  { name: 'Vert (Success)', value: 'Success' },
+                  { name: 'Rouge (Danger)', value: 'Danger' },
+                ],
                 required: true,
               },
             ],
@@ -106,19 +148,6 @@ export default new ChatInput(
             description: 'Activer les fonctionnalités premium pour ce serveur',
             type: ApplicationCommandOptionType.Subcommand,
           },
-          {
-            name: 'transcript',
-            description: 'Voir la transcription d\'un ticket',
-            type: ApplicationCommandOptionType.Subcommand,
-            options: [
-              {
-                name: 'ticket_id',
-                description: 'ID du salon du ticket',
-                type: ApplicationCommandOptionType.String,
-                required: true,
-              },
-            ],
-          },
         ],
       },
     ],
@@ -131,8 +160,16 @@ export default new ChatInput(
 
     const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
-    const MAIN_SERVER_ID = '1256649889664995409'; // Remplacer par l'ID de votre serveur
-    const PREMIUM_ROLE_ID = '1360543319637233765'; // Remplacer par l'ID du rôle premium
+    const MAIN_SERVER_ID = '1256649889664995409';
+    const PREMIUM_ROLE_ID = '1360543319637233765';
+
+    // Map string styles to ButtonStyle enum
+    const styleMap: Record<ButtonStyleType, ButtonStyle> = {
+      Primary: ButtonStyle.Primary,
+      Secondary: ButtonStyle.Secondary,
+      Success: ButtonStyle.Success,
+      Danger: ButtonStyle.Danger,
+    };
 
     // Groupe : config
     if (subcommandGroup === 'config') {
@@ -173,11 +210,11 @@ export default new ChatInput(
             guildId: interaction.guild.id,
             ticketChannelId: channel.id,
             ticketCategoryId: category.id,
-            ticketButtons: [], // Toujours initialisé
+            ticketButtons: [],
             embedTitle: embedTitle || 'Ouvrir un Ticket',
             embedDescription:
               embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
-            embedColor: embedColor || '#131416', // Par défaut : Blurple
+            embedColor: embedColor || '#5865F2',
           });
         } else {
           config.ticketChannelId = channel.id;
@@ -187,7 +224,7 @@ export default new ChatInput(
             embedDescription ||
             config.embedDescription ||
             'Cliquez sur un bouton pour créer un ticket.';
-          config.embedColor = embedColor || config.embedColor || '#131416';
+          config.embedColor = embedColor || config.embedColor || '#5865F2';
         }
 
         await config.save();
@@ -242,15 +279,15 @@ export default new ChatInput(
             new ButtonBuilder()
               .setCustomId(btn.customId)
               .setLabel(btn.label)
-              .setStyle(ButtonStyle.Primary),
+              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary),
           ),
         );
 
         await channel.send({
           embeds: [
             new EmbedBuilder()
-              .setTitle(config.embedTitle ?? null) // Convertir undefined en null
-              .setDescription(config.embedDescription ?? null) // Convertir undefined en null
+              .setTitle(config.embedTitle ?? null)
+              .setDescription(config.embedDescription ?? null)
               .setColor((config.embedColor as any) || Colors.Blurple),
           ],
           components: [row],
@@ -275,6 +312,7 @@ export default new ChatInput(
         const label = interaction.options.getString('label', true);
         const title = interaction.options.getString('title', true);
         const description = interaction.options.getString('description', true);
+        const style = (interaction.options.getString('style') || 'Primary') as ButtonStyleType;
 
         let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
@@ -299,10 +337,10 @@ export default new ChatInput(
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`❌\` Limite de boutons atteinte (${isPremium ? 5 : 3}). ${
+                  `\`❌\` Limite de boutons atteinte (maximum ${isPremium ? 5 : 3}). ${
                     isPremium
                       ? ''
-                      : 'Activez le premium pour ajouter plus de boutons.'
+                      : 'Activez le premium pour ajouter jusqu\'à 5 boutons.'
                   }`,
                 )
                 .setColor(Colors.Red),
@@ -318,6 +356,7 @@ export default new ChatInput(
           customId,
           embedTitle: title,
           embedDescription: description,
+          style,
         });
 
         await config.save();
@@ -325,7 +364,56 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(`\`✅\` Bouton ajouté : "${label}"`)
+              .setDescription(`\`✅\` Bouton ajouté : "${label}" (Style: ${style})`)
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+      }
+
+      // Sous-commande : edit
+      else if (subcommand === 'edit') {
+        const buttonIndex = interaction.options.getInteger('button_index', true);
+        const newStyle = interaction.options.getString('style', true) as ButtonStyleType;
+
+        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config || !config.ticketButtons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Aucun bouton configuré.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const index = buttonIndex - 1;
+        if (index < 0 || index >= config.ticketButtons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `\`❌\` Index invalide. Choisissez un numéro entre 1 et ${config.ticketButtons.length}.`,
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        config.ticketButtons[index].style = newStyle;
+        await config.save();
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                `\`✅\` Style du bouton "${config.ticketButtons[index].label}" mis à jour : ${newStyle}`,
+              )
               .setColor(Colors.Green),
           ],
           ephemeral: true,
@@ -362,7 +450,7 @@ export default new ChatInput(
           config = new TicketConfig({
             guildId: interaction.guild.id,
             premiumUserId: interaction.user.id,
-            ticketButtons: [], // Toujours initialisé
+            ticketButtons: [],
           });
         } else if (
           config.premiumUserId &&
@@ -408,66 +496,6 @@ export default new ChatInput(
             new EmbedBuilder()
               .setDescription('`✅` Fonctionnalités premium activées pour ce serveur.')
               .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-      }
-
-      // Sous-commande : transcript
-      else if (subcommand === 'transcript') {
-        const ticketId = interaction.options.getString('ticket_id', true);
-
-        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (
-          !config?.premiumUserId ||
-          !(await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID))
-        ) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Cette fonctionnalité nécessite un abonnement premium.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const transcript = await TicketTranscript.findOne({
-          guildId: interaction.guild.id,
-          ticketId,
-        });
-
-        if (!transcript) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Aucune transcription trouvée pour ce ticket.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const messages = transcript.messages
-          .map(
-            (msg) =>
-              `[${new Date(msg.timestamp).toLocaleString()}] <@${
-                msg.authorId
-              }>: ${msg.content}`,
-          )
-          .join('\n');
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(`Transcription du Ticket ${ticketId}`)
-              .setDescription(messages || 'Aucun message enregistré.')
-              .setColor(Colors.Blurple),
           ],
           ephemeral: true,
         });
