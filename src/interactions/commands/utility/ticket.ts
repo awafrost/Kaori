@@ -84,6 +84,12 @@ export default new ChatInput(
                 required: true,
               },
               {
+                name: 'description',
+                description: 'Description de l\'embed du ticket',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+              {
                 name: 'style',
                 description: 'Couleur du bouton',
                 type: ApplicationCommandOptionType.String,
@@ -99,12 +105,6 @@ export default new ChatInput(
                 description: 'Titre de l\'embed du ticket (optionnel)',
                 type: ApplicationCommandOptionType.String,
                 required: false,
-              },
-              {
-                name: 'description',
-                description: 'Description de l\'embed du ticket',
-                type: ApplicationCommandOptionType.String,
-                required: true,
               },
             ],
           },
@@ -145,8 +145,8 @@ export default new ChatInput(
 
     const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
-    const MAIN_SERVER_ID = 'YOUR_MAIN_SERVER_ID'; // Remplacer par l'ID de votre serveur
-    const PREMIUM_ROLE_ID = 'YOUR_PREMIUM_ROLE_ID'; // Remplacer par l'ID du rôle premium
+    const MAIN_SERVER_ID = '1256649889664995409';
+    const PREMIUM_ROLE_ID = '1360543319637233765';
 
     // Groupe : config
     if (subcommandGroup === 'config') {
@@ -191,7 +191,7 @@ export default new ChatInput(
             embedTitle: embedTitle || 'Ouvrir un Ticket',
             embedDescription:
               embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
-            embedColor: embedColor || '#5865F2',
+            embedColor: embedColor || '#131416',
           });
         } else {
           config.ticketChannelId = channel.id;
@@ -201,7 +201,7 @@ export default new ChatInput(
             embedDescription ||
             config.embedDescription ||
             'Cliquez sur un bouton pour créer un ticket.';
-          config.embedColor = embedColor || config.embedColor || '#5865F2';
+          config.embedColor = embedColor || config.embedColor || '#131416';
         }
 
         await config.save();
@@ -294,9 +294,9 @@ export default new ChatInput(
       // Sous-commande : add
       if (subcommand === 'add') {
         const emoji = interaction.options.getString('emoji', true);
+        const description = interaction.options.getString('description', true);
         const rawStyle = interaction.options.getString('style');
         const title = interaction.options.getString('title');
-        const description = interaction.options.getString('description', true);
 
         // Validate the style to match the allowed enum values
         const validStyles = ['primary', 'secondary', 'success'] as const;

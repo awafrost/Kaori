@@ -70,31 +70,29 @@ const ticketCreateButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_close')
         .setLabel('Fermer')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('ticket_transcript')
-        .setLabel('Transcription')
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('1360548202042097825'),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
-        .setStyle(ButtonStyle.Danger),
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('1360548398092124271'),
       new ButtonBuilder()
         .setCustomId(`ticket_mention_${interaction.user.id}`)
-        .setLabel('Mentionner le Créateur')
+        .setLabel('Rappel')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('👤'),
+        .setEmoji('1360544289440137278'),
     );
 
     await channel.send({
-      content: `<@${interaction.user.id}>`,
+      content: `<@${interaction.user.id}> <a:pipu_peekaboo:1260209668899344475>`,
       embeds: [
         new EmbedBuilder()
           .setTitle(buttonConfig.embedTitle || 'Ticket Ouvert')
           .setDescription(
             buttonConfig.embedDescription || 'Comment pouvons-nous vous aider ?',
           )
-          .setColor(Colors.Blurple),
+          .setColor('#131416'),
       ],
       components: [row],
     });
@@ -140,27 +138,6 @@ const ticketCloseButton = new Button(
       return;
     }
 
-    // Enregistrer la transcription
-    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
-    if (messages) {
-      const transcriptMessages = messages
-        .filter((msg) => !msg.author.bot)
-        .map((msg) => ({
-          authorId: msg.author.id,
-          content: msg.content || '[Aucun contenu]',
-          timestamp: msg.createdAt,
-        }))
-        .reverse();
-
-      const transcript = new TicketTranscript({
-        guildId: interaction.guild.id,
-        ticketId: interaction.channelId,
-        userId: ticket.userId,
-        messages: transcriptMessages,
-      });
-      await transcript.save();
-    }
-
     await interaction.channel?.edit({
       permissionOverwrites: [
         { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -185,21 +162,18 @@ const ticketCloseButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_reopen')
         .setLabel('Rouvrir')
+        .setEmoji('1360548202042097825')
         .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('ticket_transcript')
-        .setLabel('Transcription')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
+        .setEmoji('1360548398092124271')
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId(`ticket_mention_${ticket.userId}`)
-        .setLabel('Mentionner le Créateur')
+        .setLabel('Rappel')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('👤'),
+        .setEmoji('1360544289440137278'),
     );
 
     await interaction.reply({
@@ -217,6 +191,7 @@ const ticketCloseButton = new Button(
     // Envoyer un DM à l'utilisateur
     try {
       const user = await interaction.client.users.fetch(ticket.userId);
+      const timestamp = Math.floor(Date.now() / 1000); // Timestamp Unix en secondes
       await user.send({
         embeds: [
           new EmbedBuilder()
@@ -224,9 +199,9 @@ const ticketCloseButton = new Button(
             .setDescription(
               `Votre ticket dans **${interaction.guild.name}** a été fermé.\n` +
               `**ID du ticket** : ${ticket.channelId}\n` +
-              `**Fermé le** : ${new Date().toLocaleString()}`,
+              `**Fermé le** : <t:${timestamp}:F>`,
             )
-            .setColor(Colors.Red),
+            .setColor('#131416'),
         ],
       });
     } catch (error) {
@@ -285,20 +260,18 @@ const ticketReopenButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_close')
         .setLabel('Fermer')
+        .setEmoji('1360548202042097825')
         .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('ticket_transcript')
-        .setLabel('Transcription')
-        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
+        .setEmoji('1360548398092124271')
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId(`ticket_mention_${ticket.userId}`)
-        .setLabel('Mentionner le Créateur')
+        .setLabel('Rappel')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('👤'),
+        .setEmoji('1360544289440137278'),
     );
 
     await interaction.reply({
@@ -369,6 +342,7 @@ const ticketDeleteButton = new Button(
     // Envoyer un DM à l'utilisateur
     try {
       const user = await interaction.client.users.fetch(ticket.userId);
+      const timestamp = Math.floor(Date.now() / 1000); // Timestamp Unix en secondes
       await user.send({
         embeds: [
           new EmbedBuilder()
@@ -376,9 +350,9 @@ const ticketDeleteButton = new Button(
             .setDescription(
               `Votre ticket dans **${interaction.guild.name}** a été supprimé.\n` +
               `**ID du ticket** : ${ticket.channelId}\n` +
-              `**Supprimé le** : ${new Date().toLocaleString()}`,
+              `**Supprimé le** : <t:${timestamp}:F>`,
             )
-            .setColor(Colors.Red),
+            .setColor('#131416'),
         ],
       });
     } catch (error) {
@@ -459,7 +433,7 @@ const ticketMentionButton = new Button(
 
     const creatorId = interaction.customId.split('_')[2];
     await interaction.reply({
-      content: `<@${creatorId}>`,
+      content: `<@${creatorId}> En quoi pouvons-nous vous aidez?`,
       ephemeral: false,
     });
   },
