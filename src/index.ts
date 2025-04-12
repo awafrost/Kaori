@@ -19,6 +19,7 @@ import {
   version,
 } from 'discord.js';
 import mongoose from 'mongoose';
+import { startTicketInactivityChecker } from '@modules/ticketInactivityChecker'; // Import ticket inactivity checker
 
 // Set up the Discord client
 export const client = new Client({
@@ -74,9 +75,12 @@ client.once(Events.ClientReady, async () => {
 
   // Register the commands
   interactions.registerCommands({
-   // guildId: process.env.GUILD_ID ?? undefined,
+    // guildId: process.env.GUILD_ID ?? undefined,
     syncWithCommand: true,
   });
+
+  // Start ticket inactivity checker
+  await startTicketInactivityChecker(client);
 });
 
 // Interaction handling
