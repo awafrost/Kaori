@@ -11,6 +11,35 @@ import {
   PermissionFlagsBits,
 } from 'discord.js';
 
+async function resolveEmoji(input: string, guild: any): Promise<string | null> {
+  // Cas 1 : Emoji Unicode (ex. 📩)
+  if (/^[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+$/u.test(input)) {
+    return input;
+  }
+
+  // Cas 2 : Format Discord <:nom:ID> ou <a:nom:ID>
+  const discordEmojiMatch = input.match(/^<a?:([^\s:]+):(\d+)>$/);
+  if (discordEmojiMatch) {
+    return discordEmojiMatch[2]; // Retourne l'ID
+  }
+
+  // Cas 3 : Nom brut (ex. :zorangetasses:)
+  const nameMatch = input.match(/^:([^\s:]+):$/);
+  if (nameMatch) {
+    const emojiName = nameMatch[1];
+    const emoji = guild.emojis.cache.find((e: any) => e.name === emojiName);
+    return emoji ? emoji.id : null;
+  }
+
+  // Cas 4 : ID brut
+  if (/^\d+$/.test(input)) {
+    const emoji = guild.emojis.cache.get(input);
+    return emoji ? input : null;
+  }
+
+  return null;
+}
+
 export default new ChatInput(
   {
     name: 'ticket',
@@ -70,6 +99,11 @@ export default new ChatInput(
             description: 'Voir la configuration actuelle du système de tickets',
             type: ApplicationCommandOptionType.Subcommand,
           },
+          {
+            name: 'remove',
+            description: 'Supprimer un bouton de ticket configuré',
+            type: ApplicationCommandOptionType.Subcommand,
+          },
         ],
       },
       {
@@ -84,7 +118,7 @@ export default new ChatInput(
             options: [
               {
                 name: 'emoji',
-                description: 'Emoji du bouton (ex. 📩 ou <:nom:ID>)',
+                description: 'Emoji du bouton (ex. 📩, :nom:, ou <:nom:ID>)',
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
@@ -235,15 +269,34 @@ export default new ChatInput(
           success: ButtonStyle.Success,
         };
 
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          config.ticketButtons.map((btn) => {
-            const button = new ButtonBuilder()
-              .setCustomId(btn.customId)
-              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary);
-            if (btn.emoji) button.setEmoji(btn.emoji);
-            return button;
-          }),
-        );
+        const buttons = [];
+        for (const btn of config.ticketButtons) {
+          const emojiId = await resolveEmoji(btn.emoji, interaction.guild);
+          if (!emojiId) {
+            console.warn(`Emoji invalide pour le bouton ${btn.customId}: ${btn.emoji}`);
+            continue;
+          }
+
+          const button = new ButtonBuilder()
+            .setCustomId(btn.customId)
+            .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary)
+            .setEmoji(emojiId);
+          buttons.push(button);
+        }
+
+        if (!buttons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Aucun bouton valide trouvé.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
         await channel.send({
           embeds: [
@@ -303,19 +356,65 @@ export default new ChatInput(
         });
         setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
+
+      // Sous-commande : remove
+      else if (subcommand === 'remove') {
+        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config || !config.ticketButtons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Aucun bouton configuré à supprimer.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const buttons = config.ticketButtons.map((btn, index) =>
+          new ButtonBuilder()
+            .setCustomId(`remove_button_${index}`)
+            .setLabel(
+              btn.embedDescription
+                ? btn.embedDescription.slice(0, 80)
+                : `Bouton ${index + 1}`,
+            )
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji(btn.emoji),
+        );
+
+        const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+        for (let i = 0; i < buttons.length; i += 5) {
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            buttons.slice(i, i + 5),
+          );
+          rows.push(row);
+        }
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('Supprimer un Bouton')
+              .setDescription('Cliquez sur un bouton pour le supprimer.')
+              .setColor(Colors.Blurple),
+          ],
+          components: rows,
+          ephemeral: true,
+        });
+      }
     }
 
     // Groupe : button
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        // Vérification manuelle pour éviter TypeError
-        const emoji = interaction.options.getString('emoji');
+        const emojiInput = interaction.options.getString('emoji');
         const description = interaction.options.getString('description');
         const rawStyle = interaction.options.getString('style');
         const title = interaction.options.getString('title');
 
-        if (!emoji || !description) {
+        if (!emojiInput || !description) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
@@ -327,7 +426,19 @@ export default new ChatInput(
           return;
         }
 
-        // Validate the style to match the allowed enum values
+        const emoji = await resolveEmoji(emojiInput, interaction.guild);
+        if (!emoji) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Emoji invalide. Utilisez un emoji Unicode, un nom (:nom:), ou un ID.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
         const validStyles = ['primary', 'secondary', 'success'] as const;
         const style: 'primary' | 'secondary' | 'success' | undefined = rawStyle &&
           validStyles.includes(rawStyle as any)
@@ -349,7 +460,7 @@ export default new ChatInput(
           return;
         }
 
-        const maxButtons = 5; // Plus de premium, limite fixée à 5
+        const maxButtons = 5;
         if (config.ticketButtons.length >= maxButtons) {
           await interaction.reply({
             embeds: [
@@ -366,7 +477,6 @@ export default new ChatInput(
 
         const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
         config.ticketButtons.push({
-          label: emoji, // Pour compatibilité
           customId,
           emoji,
           style,
@@ -379,7 +489,7 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(`\`✅\` Bouton ajouté avec l'emoji : ${emoji}`)
+              .setDescription(`\`✅\` Bouton ajouté avec l'emoji : <:${emoji}:${emoji}>`)
               .setColor(Colors.Green),
           ],
           ephemeral: true,

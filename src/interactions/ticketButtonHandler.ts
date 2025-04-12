@@ -1,5 +1,5 @@
 import { Button } from '@akki256/discord-interaction';
-import { Ticket, TicketConfig, TicketTranscript } from '@models';
+import { Ticket, TicketConfig } from '@models';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 
 const ticketCreateButton = new Button(
-  { customId: /^ticket_create_[0-4]_[0-9]+$/ }, // Jusqu'à 5 boutons (0-4)
+  { customId: /^ticket_create_[0-4]_[0-9]+$/ },
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
 
@@ -162,13 +162,13 @@ const ticketCloseButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_reopen')
         .setLabel('Rouvrir')
-        .setEmoji('1360548202042097825')
-        .setStyle(ButtonStyle.Success),
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('1360548202042097825'),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
-        .setEmoji('1360548398092124271')
-        .setStyle(ButtonStyle.Danger),
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('1360548398092124271'),
       new ButtonBuilder()
         .setCustomId(`ticket_mention_${ticket.userId}`)
         .setLabel('Rappel')
@@ -188,10 +188,9 @@ const ticketCloseButton = new Button(
       components: [row],
     });
 
-    // Envoyer un DM à l'utilisateur
     try {
       const user = await interaction.client.users.fetch(ticket.userId);
-      const timestamp = Math.floor(Date.now() / 1000); // Timestamp Unix en secondes
+      const timestamp = Math.floor(Date.now() / 1000);
       await user.send({
         embeds: [
           new EmbedBuilder()
@@ -260,13 +259,13 @@ const ticketReopenButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_close')
         .setLabel('Fermer')
-        .setEmoji('1360548202042097825')
-        .setStyle(ButtonStyle.Danger),
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('1360548202042097825'),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
-        .setEmoji('1360548398092124271')
-        .setStyle(ButtonStyle.Danger),
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('1360548398092124271'),
       new ButtonBuilder()
         .setCustomId(`ticket_mention_${ticket.userId}`)
         .setLabel('Rappel')
@@ -310,27 +309,6 @@ const ticketDeleteButton = new Button(
       return;
     }
 
-    // Enregistrer la transcription
-    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
-    if (messages) {
-      const transcriptMessages = messages
-        .filter((msg) => !msg.author.bot)
-        .map((msg) => ({
-          authorId: msg.author.id,
-          content: msg.content || '[Aucun contenu]',
-          timestamp: msg.createdAt,
-        }))
-        .reverse();
-
-      const transcript = new TicketTranscript({
-        guildId: interaction.guild.id,
-        ticketId: interaction.channelId,
-        userId: ticket.userId,
-        messages: transcriptMessages,
-      });
-      await transcript.save();
-    }
-
     await interaction.reply({
       embeds: [
         new EmbedBuilder()
@@ -339,10 +317,9 @@ const ticketDeleteButton = new Button(
       ],
     });
 
-    // Envoyer un DM à l'utilisateur
     try {
       const user = await interaction.client.users.fetch(ticket.userId);
-      const timestamp = Math.floor(Date.now() / 1000); // Timestamp Unix en secondes
+      const timestamp = Math.floor(Date.now() / 1000);
       await user.send({
         embeds: [
           new EmbedBuilder()
@@ -366,66 +343,6 @@ const ticketDeleteButton = new Button(
   },
 );
 
-const ticketTranscriptButton = new Button(
-  { customId: 'ticket_transcript' },
-  async (interaction) => {
-    if (!interaction.inCachedGuild()) return;
-
-    const ticket = await Ticket.findOne({
-      guildId: interaction.guild.id,
-      channelId: interaction.channelId,
-    });
-    if (!ticket) {
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`❌` Ticket non trouvé.')
-            .setColor(Colors.Red),
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const transcript = await TicketTranscript.findOne({
-      guildId: interaction.guild.id,
-      ticketId: interaction.channelId,
-    });
-
-    if (!transcript) {
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`❌` Aucune transcription trouvée pour ce ticket.')
-            .setColor(Colors.Red),
-        ],
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const messages = transcript.messages
-      .map(
-        (msg) =>
-          `[${new Date(msg.timestamp).toLocaleString()}] <@${
-            msg.authorId
-          }>: ${msg.content}`,
-      )
-      .join('\n');
-
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(`Transcription du Ticket ${interaction.channelId}`)
-          .setDescription(messages || 'Aucun message enregistré.')
-          .setColor(Colors.Blurple),
-      ],
-      ephemeral: true,
-    });
-    setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-  },
-);
-
 const ticketMentionButton = new Button(
   { customId: /^ticket_mention_[0-9]+$/ },
   async (interaction) => {
@@ -433,8 +350,41 @@ const ticketMentionButton = new Button(
 
     const creatorId = interaction.customId.split('_')[2];
     await interaction.reply({
-      content: `<@${creatorId}> En quoi pouvons-nous vous aidez?`,
+      content: `<@${creatorId}> En quoi pouvons-nous vous aider ?`,
       ephemeral: false,
+    });
+  },
+);
+
+const ticketRemoveButton = new Button(
+  { customId: /^remove_button_[0-4]$/ },
+  async (interaction) => {
+    if (!interaction.inCachedGuild()) return;
+
+    const index = parseInt(interaction.customId.split('_')[2]);
+    const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+    if (!config || index >= config.ticketButtons.length) {
+      await interaction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription('`❌` Bouton non trouvé.')
+            .setColor(Colors.Red),
+        ],
+        components: [],
+      });
+      return;
+    }
+
+    const removedButton = config.ticketButtons.splice(index, 1)[0];
+    await config.save();
+
+    await interaction.update({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(`\`✅\` Bouton supprimé : ${removedButton.emoji}`)
+          .setColor(Colors.Green),
+      ],
+      components: [],
     });
   },
 );
@@ -444,6 +394,6 @@ module.exports = [
   ticketCloseButton,
   ticketReopenButton,
   ticketDeleteButton,
-  ticketTranscriptButton,
   ticketMentionButton,
+  ticketRemoveButton,
 ];

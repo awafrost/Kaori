@@ -8,17 +8,15 @@ export const TicketConfig = z.object({
   ticketButtons: z
     .array(
       z.object({
-        label: z.string().optional(), // Conservé pour compatibilité, mais non utilisé pour l'affichage
         customId: z.string(),
+        emoji: z.string(), // ID ou Unicode
         embedTitle: z.string().nullable().optional(),
-        embedDescription: z.string().nullable().optional(),
-        emoji: z.string(), // Obligatoire pour les boutons
-        style: z.enum(['primary', 'secondary', 'success']).optional(),
+    embedDescription: z.string().nullable().optional(),
+    style: z.enum(['primary', 'secondary', 'success']).optional(),
       }),
     )
-    .max(5) // Limite max pour premium
+    .max(5)
     .default([]),
-  premiumUserId: Snowflake.nullable().optional(),
   embedTitle: z.string().nullable().optional(),
   embedDescription: z.string().nullable().optional(),
   embedColor: z.string().nullable().optional(),
