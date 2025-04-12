@@ -14,13 +14,12 @@ const TicketConfigSchema = new Schema<z.infer<typeof TicketConfig>>({
       customId: Schema.Types.String,
       embedTitle: Schema.Types.String,
       embedDescription: Schema.Types.String,
-      style: Schema.Types.String,
     },
   ],
+  premiumUserId: Schema.Types.String,
   embedTitle: Schema.Types.String,
   embedDescription: Schema.Types.String,
   embedColor: Schema.Types.String,
-  embedImage: Schema.Types.String,
   createdAt: { type: Schema.Types.Date, default: Date.now },
 });
 

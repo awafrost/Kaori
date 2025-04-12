@@ -7,6 +7,7 @@ const { Schema, model, models } = mongoose;
 const TicketTranscriptSchema = new Schema<z.infer<typeof TicketTranscript>>({
   guildId: Schema.Types.String,
   ticketId: Schema.Types.String,
+  userId: Schema.Types.String,
   messages: [
     {
       authorId: Schema.Types.String,

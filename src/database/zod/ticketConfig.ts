@@ -12,15 +12,14 @@ export const TicketConfig = z.object({
         customId: z.string(),
         embedTitle: z.string().nullable().optional(),
         embedDescription: z.string().nullable().optional(),
-        style: z.enum(['primary', 'secondary', 'success']).optional(),
       }),
     )
-    .max(5)
-    .default([]),
-  embedTitle: z.string().nullable().optional(),
-  embedDescription: z.string().nullable().optional(),
-  embedColor: z.string().nullable().optional(),
-  embedImage: z.string().nullable().optional(),
+    .max(3)
+    .default([]), // Tableau vide par défaut
+  premiumUserId: Snowflake.nullable().optional(),
+  embedTitle: z.string().nullable().optional(), // Titre de l'embed principal
+  embedDescription: z.string().nullable().optional(), // Description de l'embed principal
+  embedColor: z.string().nullable().optional(), // Couleur de l'embed principal
   createdAt: z.date().optional(),
 });
 

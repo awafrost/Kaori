@@ -1,15 +1,13 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { TicketConfig } from '@models';
+import { TicketConfig, TicketTranscript } from '@models';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
-  ColorResolvable,
 } from 'discord.js';
 
 export default new ChatInput(
@@ -24,35 +22,32 @@ export default new ChatInput(
         options: [
           {
             name: 'setup',
-            description: "Configurer le salon, la catégorie et l'embed des tickets",
+            description: 'Configurer le salon, la catégorie et l\'embed des tickets',
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
                 name: 'channel',
-                description: "Salon où envoyer l'embed des tickets",
+                description: 'Salon où envoyer l\'embed des tickets',
                 type: ApplicationCommandOptionType.Channel,
-                channelTypes: [ChannelType.GuildText],
                 required: true,
               },
               {
                 name: 'category',
                 description: 'Catégorie où créer les tickets',
                 type: ApplicationCommandOptionType.Channel,
-                channelTypes: [ChannelType.GuildCategory],
                 required: true,
               },
               {
                 name: 'embed_title',
-                description: "Titre de l'embed des tickets",
+                description: 'Titre de l\'embed des tickets',
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
               {
                 name: 'embed_description',
-                description: "Description de l'embed des tickets (max 100 caractères ici, modifiez via /ticket config setup si besoin)",
+                description: 'Description de l\'embed des tickets',
                 type: ApplicationCommandOptionType.String,
                 required: false,
-                max_length: 100,
               },
               {
                 name: 'embed_color',
@@ -60,38 +55,12 @@ export default new ChatInput(
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
-              {
-                name: 'embed_image',
-                description: "URL de l'image pour l'embed (ex. https://example.com/image.png)",
-                type: ApplicationCommandOptionType.String,
-                required: false,
-              },
             ],
           },
           {
             name: 'send',
-            description: "Envoyer l'embed des tickets dans le salon configuré",
+            description: 'Envoyer l\'embed des tickets dans le salon configuré',
             type: ApplicationCommandOptionType.Subcommand,
-          },
-          {
-            name: 'status',
-            description: 'Voir la configuration actuelle du système de tickets',
-            type: ApplicationCommandOptionType.Subcommand,
-          },
-          {
-            name: 'remove',
-            description: 'Supprimer un bouton de ticket configuré',
-            type: ApplicationCommandOptionType.Subcommand,
-            options: [
-              {
-                name: 'button_index',
-                description: 'Index du bouton à supprimer (1 à 5)',
-                type: ApplicationCommandOptionType.Integer,
-                required: true,
-                min_value: 1,
-                max_value: 5,
-              },
-            ],
           },
         ],
       },
@@ -112,25 +81,39 @@ export default new ChatInput(
                 required: true,
               },
               {
-                name: 'description',
-                description: "Description de l'embed du ticket",
-                type: ApplicationCommandOptionType.String,
-                required: false,
-              },
-              {
-                name: 'style',
-                description: 'Couleur du bouton',
-                type: ApplicationCommandOptionType.String,
-                choices: [
-                  { name: 'Bleu', value: 'primary' },
-                  { name: 'Gris', value: 'secondary' },
-                  { name: 'Vert', value: 'success' },
-                ],
-                required: false,
-              },
-              {
                 name: 'title',
-                description: "Titre de l'embed du ticket",
+                description: 'Titre de l\'embed du ticket',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+              {
+                name: 'description',
+                description: 'Description de l\'embed du ticket',
+                type: ApplicationCommandOptionType.String,
+                required: true,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'premium',
+        description: 'Gérer les fonctionnalités premium',
+        type: ApplicationCommandOptionType.SubcommandGroup,
+        options: [
+          {
+            name: 'enable',
+            description: 'Activer les fonctionnalités premium pour ce serveur',
+            type: ApplicationCommandOptionType.Subcommand,
+          },
+          {
+            name: 'transcript',
+            description: 'Voir la transcription d\'un ticket',
+            type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'ticket_id',
+                description: 'ID du salon du ticket',
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
@@ -148,6 +131,8 @@ export default new ChatInput(
 
     const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
+    const MAIN_SERVER_ID = '1256649889664995409'; // Remplacer par l'ID de votre serveur
+    const PREMIUM_ROLE_ID = '1360543319637233765'; // Remplacer par l'ID du rôle premium
 
     // Groupe : config
     if (subcommandGroup === 'config') {
@@ -157,8 +142,7 @@ export default new ChatInput(
         const category = interaction.options.getChannel('category', true);
         const embedTitle = interaction.options.getString('embed_title');
         const embedDescription = interaction.options.getString('embed_description');
-        let embedColor = interaction.options.getString('embed_color');
-        const embedImage = interaction.options.getString('embed_image');
+        const embedColor = interaction.options.getString('embed_color');
 
         if (!channel.isTextBased()) {
           await interaction.reply({
@@ -171,7 +155,7 @@ export default new ChatInput(
           });
           return;
         }
-        if (category.type !== ChannelType.GuildCategory) {
+        if (category.type !== 4) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
@@ -183,321 +167,104 @@ export default new ChatInput(
           return;
         }
 
-        if (embedImage && !/^https?:\/\/.*\.(png|jpg|jpeg|gif)$/i.test(embedImage)) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` L\'URL de l\'image doit être un lien valide vers une image (png, jpg, jpeg, gif).')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
+        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config) {
+          config = new TicketConfig({
+            guildId: interaction.guild.id,
+            ticketChannelId: channel.id,
+            ticketCategoryId: category.id,
+            ticketButtons: [], // Toujours initialisé
+            embedTitle: embedTitle || 'Ouvrir un Ticket',
+            embedDescription:
+              embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
+            embedColor: embedColor || '#131416', // Par défaut : Blurple
           });
-          return;
+        } else {
+          config.ticketChannelId = channel.id;
+          config.ticketCategoryId = category.id;
+          config.embedTitle = embedTitle || config.embedTitle || 'Ouvrir un Ticket';
+          config.embedDescription =
+            embedDescription ||
+            config.embedDescription ||
+            'Cliquez sur un bouton pour créer un ticket.';
+          config.embedColor = embedColor || config.embedColor || '#131416';
         }
 
-        if (embedColor && !/^#[0-9A-F]{6}$/i.test(embedColor)) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` La couleur doit être un code hexadécimal valide (ex. #FF0000).')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
+        await config.save();
 
-        try {
-          let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-          if (!config) {
-            config = new TicketConfig({
-              guildId: interaction.guild.id,
-              ticketChannelId: channel.id,
-              ticketCategoryId: category.id,
-              ticketButtons: [],
-              embedTitle: embedTitle || '🎫 Support Tickets',
-              embedDescription:
-                embedDescription ||
-                'Bienvenue dans notre système de tickets ! Choisissez une option ci-dessous pour ouvrir un ticket.',
-              embedColor: embedColor || '#2F3136',
-              embedImage: embedImage || undefined,
-            });
-          } else {
-            config.ticketChannelId = channel.id;
-            config.ticketCategoryId = category.id;
-            config.embedTitle = embedTitle || config.embedTitle || '🎫 Support Tickets';
-            config.embedDescription =
-              embedDescription ||
-              config.embedDescription ||
-              'Bienvenue dans notre système de tickets ! Choisissez une option ci-dessous pour ouvrir un ticket.';
-            config.embedColor = embedColor || config.embedColor || '#2F3136';
-            config.embedImage = embedImage || config.embedImage || undefined;
-          }
-
-          await config.save();
-
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}` +
-                  (embedImage ? `\n- Image : ${embedImage}` : ''),
-                )
-                .setColor(Colors.Green),
-            ],
-            ephemeral: true,
-          });
-          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-        } catch (error) {
-          console.error('[ERROR] Failed to save TicketConfig in setup:', error);
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Erreur lors de la sauvegarde de la configuration.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-        }
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(
+                `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}`,
+              )
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
 
       // Sous-commande : send
       else if (subcommand === 'send') {
-        try {
-          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-          if (!config?.ticketChannelId || !config.ticketButtons.length) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    '`❌` Configurez d\'abord le salon et ajoutez au moins un bouton.',
-                  )
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
+        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config?.ticketChannelId || !config.ticketButtons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  '`❌` Configurez d\'abord le salon et ajoutez au moins un bouton.',
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
 
-          const channel = await interaction.client.channels.fetch(
-            config.ticketChannelId,
-          );
-          if (!channel?.isTextBased()) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Le salon configuré n\'est pas textuel.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
+        const channel = await interaction.client.channels.fetch(
+          config.ticketChannelId,
+        );
+        if (!channel?.isTextBased()) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Le salon configuré n\'est pas textuel.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
 
-          const styleMap: Record<string, ButtonStyle> = {
-            primary: ButtonStyle.Primary,
-            secondary: ButtonStyle.Secondary,
-            success: ButtonStyle.Success,
-          };
-
-          const buttons = [];
-          for (const btn of config.ticketButtons) {
-            const button = new ButtonBuilder()
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          config.ticketButtons.map((btn) =>
+            new ButtonBuilder()
               .setCustomId(btn.customId)
               .setLabel(btn.label)
-              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary);
-            buttons.push(button);
-          }
+              .setStyle(ButtonStyle.Primary),
+          ),
+        );
 
-          if (!buttons.length) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Aucun bouton valide trouvé.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
+        await channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(config.embedTitle ?? null) // Convertir undefined en null
+              .setDescription(config.embedDescription ?? null) // Convertir undefined en null
+              .setColor((config.embedColor as any) || Colors.Blurple),
+          ],
+          components: [row],
+        });
 
-          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-
-          const embed = new EmbedBuilder()
-            .setTitle(config.embedTitle ?? null)
-            .setDescription(config.embedDescription ?? null)
-            .setColor((config.embedColor as ColorResolvable) ?? Colors.Blurple);
-
-          if (config.embedImage) {
-            embed.setImage(config.embedImage);
-          }
-
-          await channel.send({
-            embeds: [embed],
-            components: [row],
-          });
-
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`✅` Embed des tickets envoyé dans le salon configuré.')
-                .setColor(Colors.Green),
-            ],
-            ephemeral: true,
-          });
-          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-        } catch (error) {
-          console.error('[ERROR] Failed to process send command:', error);
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Erreur lors de l\'envoi de l\'embed des tickets.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-        }
-      }
-
-      // Sous-commande : status
-      else if (subcommand === 'status') {
-        try {
-          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-          if (!config) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Aucune configuration trouvée. Utilisez `/ticket config setup` pour commencer.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const buttons = config.ticketButtons.length
-            ? config.ticketButtons
-                .map((btn, index) => `${index + 1}. ${btn.label} (${btn.style || 'primary'})`)
-                .join('\n')
-            : 'Aucun bouton configuré.';
-
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setTitle('Configuration des Tickets')
-                .setDescription(
-                  `**Salon** : ${
-                    config.ticketChannelId
-                      ? `<#${config.ticketChannelId}>`
-                      : 'Non défini'
-                  }\n` +
-                    `**Catégorie** : ${
-                      config.ticketCategoryId
-                        ? `<#${config.ticketCategoryId}>`
-                        : 'Non défini'
-                    }\n` +
-                    `**Titre de l'embed** : ${
-                      config.embedTitle || '🎫 Support Tickets'
-                    }\n` +
-                    `**Description de l'embed** :\n${
-                      config.embedDescription ||
-                      'Bienvenue dans notre système de tickets ! Choisissez une option ci-dessous pour ouvrir un ticket.'
-                    }\n` +
-                    `**Couleur de l'embed** : ${config.embedColor || '#2F3136'}\n` +
-                    (config.embedImage
-                      ? `**Image de l'embed** : ${config.embedImage}\n`
-                      : '') +
-                    `**Boutons** :\n${buttons}`,
-                )
-                .setColor(Colors.Blurple),
-            ],
-            ephemeral: true,
-          });
-          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-        } catch (error) {
-          console.error('[ERROR] Failed to process status command:', error);
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Erreur lors de la récupération de la configuration.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-        }
-      }
-
-      // Sous-commande : remove
-      else if (subcommand === 'remove') {
-        try {
-          const buttonIndex = interaction.options.getInteger('button_index', true);
-          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-          if (!config || !config.ticketButtons.length) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Aucun bouton configuré à supprimer.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const buttonsList = config.ticketButtons.length
-            ? config.ticketButtons
-                .map((btn, index) => `${index + 1}. ${btn.label} (${btn.style || 'primary'})`)
-                .join('\n')
-            : 'Aucun bouton configuré.';
-
-          const index = buttonIndex - 1;
-          if (index < 0 || index >= config.ticketButtons.length) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setTitle('Erreur de Suppression')
-                  .setDescription(
-                    `\`❌\` Index invalide. Choisissez un numéro entre 1 et ${config.ticketButtons.length}.\n\n**Boutons disponibles** :\n${buttonsList}`,
-                  )
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const removedButton = config.ticketButtons.splice(index, 1)[0];
-          await config.save();
-
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setTitle('Bouton Supprimé')
-                .setDescription(
-                  `\`✅\` Bouton supprimé : ${removedButton.label}\n\n**Boutons restants** :\n${
-                    config.ticketButtons.length
-                      ? config.ticketButtons
-                          .map((btn, i) => `${i + 1}. ${btn.label} (${btn.style || 'primary'})`)
-                          .join('\n')
-                      : 'Aucun bouton configuré.'
-                  }`,
-                )
-                .setColor(Colors.Green),
-            ],
-            ephemeral: true,
-          });
-          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-        } catch (error) {
-          console.error('[ERROR] Failed to process remove command:', error);
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Erreur lors de la suppression du bouton.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-        }
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription('`✅` Embed des tickets envoyé dans le salon configuré.')
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
 
@@ -505,92 +272,221 @@ export default new ChatInput(
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        try {
-          const label = interaction.options.getString('label', true);
-          const description = interaction.options.getString('description', true);
-          const rawStyle = interaction.options.getString('style');
-          const title = interaction.options.getString('title', true);
+        const label = interaction.options.getString('label', true);
+        const title = interaction.options.getString('title', true);
+        const description = interaction.options.getString('description', true);
 
-          // Vérification manuelle des options requises
-          if (!label || !description || !title) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Les options `label`, `description` et `title` sont requises.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const validStyles = ['primary', 'secondary', 'success'] as const;
-          const style = rawStyle && validStyles.includes(rawStyle as any)
-            ? rawStyle as 'primary' | 'secondary' | 'success'
-            : undefined;
-
-          let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-          if (!config) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    '`❌` Veuillez d\'abord configurer le système avec `/ticket config setup`.',
-                  )
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const maxButtons = 5;
-          if (config.ticketButtons.length >= maxButtons) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    `\`❌\` Limite de boutons atteinte (${maxButtons}).`,
-                  )
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
-          config.ticketButtons.push({
-            label,
-            customId,
-            style,
-            embedTitle: title,
-            embedDescription: description,
-          });
-
-          await config.save();
-
+        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(`\`✅\` Bouton ajouté : ${label}`)
-                .setColor(Colors.Green),
-            ],
-            ephemeral: true,
-          });
-          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-        } catch (error) {
-          console.error('[ERROR] Failed to process button add command:', error);
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Erreur lors de l\'ajout du bouton.')
+                .setDescription(
+                  '`❌` Veuillez d\'abord configurer le système avec `/ticket config setup`.',
+                )
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
           });
+          return;
         }
+
+        const isPremium =
+          config.premiumUserId &&
+          (await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID));
+        if (config.ticketButtons.length >= (isPremium ? 5 : 3)) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `\`❌\` Limite de boutons atteinte (${isPremium ? 5 : 3}). ${
+                    isPremium
+                      ? ''
+                      : 'Activez le premium pour ajouter plus de boutons.'
+                  }`,
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
+        config.ticketButtons.push({
+          label,
+          customId,
+          embedTitle: title,
+          embedDescription: description,
+        });
+
+        await config.save();
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`\`✅\` Bouton ajouté : "${label}"`)
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+      }
+    }
+
+    // Groupe : premium
+    else if (subcommandGroup === 'premium') {
+      // Sous-commande : enable
+      if (subcommand === 'enable') {
+        const hasPremium = await checkPremium(
+          interaction,
+          MAIN_SERVER_ID,
+          PREMIUM_ROLE_ID,
+        );
+        if (!hasPremium) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  '`❌` Vous devez avoir le rôle premium sur le serveur principal pour activer cette fonctionnalité.',
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config) {
+          config = new TicketConfig({
+            guildId: interaction.guild.id,
+            premiumUserId: interaction.user.id,
+            ticketButtons: [], // Toujours initialisé
+          });
+        } else if (
+          config.premiumUserId &&
+          config.premiumUserId !== interaction.user.id
+        ) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  '`❌` Le premium est déjà activé par un autre utilisateur sur ce serveur.',
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        } else {
+          config.premiumUserId = interaction.user.id;
+        }
+
+        const otherConfig = await TicketConfig.findOne({
+          premiumUserId: interaction.user.id,
+          guildId: { $ne: interaction.guild.id },
+        });
+        if (otherConfig) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  '`❌` Vous avez déjà activé le premium sur un autre serveur.',
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        await config.save();
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription('`✅` Fonctionnalités premium activées pour ce serveur.')
+              .setColor(Colors.Green),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+      }
+
+      // Sous-commande : transcript
+      else if (subcommand === 'transcript') {
+        const ticketId = interaction.options.getString('ticket_id', true);
+
+        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (
+          !config?.premiumUserId ||
+          !(await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID))
+        ) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  '`❌` Cette fonctionnalité nécessite un abonnement premium.',
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const transcript = await TicketTranscript.findOne({
+          guildId: interaction.guild.id,
+          ticketId,
+        });
+
+        if (!transcript) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Aucune transcription trouvée pour ce ticket.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const messages = transcript.messages
+          .map(
+            (msg) =>
+              `[${new Date(msg.timestamp).toLocaleString()}] <@${
+                msg.authorId
+              }>: ${msg.content}`,
+          )
+          .join('\n');
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`Transcription du Ticket ${ticketId}`)
+              .setDescription(messages || 'Aucun message enregistré.')
+              .setColor(Colors.Blurple),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
   },
 );
+
+async function checkPremium(
+  interaction: any,
+  mainServerId: string,
+  premiumRoleId: string,
+) {
+  try {
+    const mainGuild = await interaction.client.guilds.fetch(mainServerId);
+    const member = await mainGuild.members.fetch(interaction.user.id);
+    return member.roles.cache.has(premiumRoleId);
+  } catch {
+    return false;
+  }
+}

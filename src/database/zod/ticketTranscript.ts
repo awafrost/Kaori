@@ -4,6 +4,7 @@ import { Snowflake } from './util';
 export const TicketTranscript = z.object({
   guildId: Snowflake,
   ticketId: Snowflake,
+  userId: Snowflake,
   messages: z.array(
     z.object({
       authorId: Snowflake,

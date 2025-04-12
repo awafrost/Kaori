@@ -1,5 +1,5 @@
 import { Button } from '@akki256/discord-interaction';
-import { TicketConfig, TicketTranscript } from '@models';
+import { Ticket, TicketConfig, TicketTranscript } from '@models';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -7,13 +7,10 @@ import {
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
-  TextChannel,
 } from 'discord.js';
 
-export default new Button(
-  {
-    customId: /^ticket_create_\d+_\d+$/,
-  },
+const ticketCreateButton = new Button(
+  { customId: /^ticket_create_[0-2]_[0-9]+$/ },
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
 
@@ -30,14 +27,13 @@ export default new Button(
       return;
     }
 
-    const buttonConfig = config.ticketButtons.find(
-      (btn) => btn.customId === interaction.customId,
-    );
+    const buttonIndex = parseInt(interaction.customId.split('_')[2]);
+    const buttonConfig = config.ticketButtons[buttonIndex];
     if (!buttonConfig) {
       await interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setDescription('`❌` Bouton de ticket invalide.')
+            .setDescription('`❌` Bouton invalide.')
             .setColor(Colors.Red),
         ],
         ephemeral: true,
@@ -45,206 +41,276 @@ export default new Button(
       return;
     }
 
-    try {
-      const ticketChannel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: 0,
-        parent: config.ticketCategoryId,
-        permissionOverwrites: [
-          {
-            id: interaction.guild.id,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
-          {
-            id: interaction.user.id,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-            ],
-          },
-          {
-            id: interaction.client.user.id,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-            ],
-          },
-        ],
-      });
+    const channel = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: 0,
+      parent: config.ticketCategoryId,
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        {
+          id: interaction.user.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+        },
+        {
+          id: interaction.client.user.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+        },
+      ],
+    });
 
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`ticket_close_${ticketChannel.id}`)
-          .setLabel('Fermer')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`ticket_transcript_${ticketChannel.id}`)
-          .setLabel('Transcription')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId(`ticket_delete_${ticketChannel.id}`)
-          .setLabel('Supprimer')
-          .setStyle(ButtonStyle.Danger),
-      );
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ticket_close')
+        .setLabel('Fermer')
+        .setStyle(ButtonStyle.Danger),
+    );
 
-      await ticketChannel.send({
-        content: `<@${interaction.user.id}>`,
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(buttonConfig.embedTitle || 'Ticket')
-            .setDescription(buttonConfig.embedDescription || 'Comment pouvons-nous vous aider ?')
-            .setColor(Colors.Blurple),
-        ],
-        components: [row],
-      });
+    await channel.send({
+      content: `<@${interaction.user.id}>`,
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(buttonConfig.embedTitle || 'Ticket Ouvert')
+          .setDescription(
+            buttonConfig.embedDescription || 'Comment pouvons-nous vous aider ?',
+          )
+          .setColor(Colors.Blurple),
+      ],
+      components: [row],
+    });
 
+    const ticket = new Ticket({
+      guildId: interaction.guild.id,
+      channelId: channel.id,
+      userId: interaction.user.id,
+      lastActivity: new Date(),
+    });
+    await ticket.save();
+
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(`\`✅\` Ticket créé : <#${channel.id}>`)
+          .setColor(Colors.Green),
+      ],
+      ephemeral: true,
+    });
+    setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+  },
+);
+
+const ticketCloseButton = new Button(
+  { customId: 'ticket_close' },
+  async (interaction) => {
+    if (!interaction.inCachedGuild()) return;
+
+    const ticket = await Ticket.findOne({
+      guildId: interaction.guild.id,
+      channelId: interaction.channelId,
+    });
+    if (!ticket) {
       await interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setDescription(`\`✅\` Ticket créé : <#${ticketChannel.id}>`)
-            .setColor(Colors.Green),
-        ],
-        ephemeral: true,
-      });
-    } catch (error) {
-      console.error('[ERROR] Failed to create ticket channel:', error);
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`❌` Erreur lors de la création du ticket.')
+            .setDescription('`❌` Ticket non trouvé.')
             .setColor(Colors.Red),
         ],
         ephemeral: true,
       });
+      return;
     }
-  },
-);
 
-export const closeButton = new Button(
-  {
-    customId: /^ticket_close_\d+$/,
-  },
-  async (interaction) => {
-    if (!interaction.inCachedGuild() || !interaction.channel) return;
+    // Enregistrer la transcription
+    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
+    if (messages) {
+      const transcriptMessages = messages
+        .filter((msg) => !msg.author.bot)
+        .map((msg) => ({
+          authorId: msg.author.id,
+          content: msg.content || '[Aucun contenu]',
+          timestamp: msg.createdAt,
+        }))
+        .reverse();
 
-    try {
-      if (interaction.channel.isTextBased() && !interaction.channel.isThread()) {
-        await (interaction.channel as TextChannel).permissionOverwrites.edit(interaction.user.id, {
-          SendMessages: false,
-        });
-      }
-
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`✅` Ticket fermé.')
-            .setColor(Colors.Green),
-        ],
-      });
-
-      await interaction.user.send({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle('Ticket Fermé')
-            .setDescription(
-              `Votre ticket dans **${interaction.guild.name}** a été fermé.\n` +
-              `**ID du ticket** : ${interaction.channel.id}\n` +
-              `**Fermé le** : ${new Date().toLocaleString('fr-FR')}`,
-            )
-            .setColor(Colors.Blurple),
-        ],
-      });
-    } catch (error) {
-      console.error('[ERROR] Failed to close ticket:', error);
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`❌` Erreur lors de la fermeture du ticket.')
-            .setColor(Colors.Red),
-        ],
-        ephemeral: true,
-      });
-    }
-  },
-);
-
-export const transcriptButton = new Button(
-  {
-    customId: /^ticket_transcript_\d+$/,
-  },
-  async (interaction) => {
-    if (!interaction.inCachedGuild() || !interaction.channel?.isTextBased()) return;
-
-    try {
-      const transcript = await TicketTranscript.findOne({
+      const transcript = new TicketTranscript({
         guildId: interaction.guild.id,
-        ticketId: interaction.channel.id,
+        ticketId: interaction.channelId,
+        userId: ticket.userId,
+        messages: transcriptMessages,
       });
-
-      const messages = transcript?.messages
-        ?.map(
-          (msg) =>
-            `[${new Date(msg.timestamp).toLocaleString()}] <@${msg.authorId}>: ${msg.content}`,
-        )
-        .join('\n') || 'Aucun message enregistré.';
-
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle(`Transcription du Ticket ${interaction.channel.id}`)
-            .setDescription(messages)
-            .setColor(Colors.Blurple),
-        ],
-        ephemeral: true,
-      });
-    } catch (error) {
-      console.error('[ERROR] Failed to fetch transcript:', error);
-      await interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription('`❌` Erreur lors de la récupération de la transcription.')
-            .setColor(Colors.Red),
-        ],
-        ephemeral: true,
-      });
+      await transcript.save();
     }
+
+    await interaction.channel?.edit({
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        {
+          id: ticket.userId,
+          deny: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+          ],
+        },
+        {
+          id: interaction.client.user.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+          ],
+        },
+      ],
+    });
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ticket_reopen')
+        .setLabel('Rouvrir')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('ticket_delete')
+        .setLabel('Supprimer')
+        .setStyle(ButtonStyle.Danger),
+    );
+
+    await interaction.reply({
+      content: `<@${ticket.userId}>`,
+      embeds: [
+        new EmbedBuilder()
+          .setDescription(
+            'Le ticket est fermé. Il sera supprimé automatiquement dans 24h s\'il reste inactif.',
+          )
+          .setColor(Colors.Red),
+      ],
+      components: [row],
+    });
+
+    ticket.lastActivity = new Date();
+    await ticket.save();
   },
 );
 
-export const deleteButton = new Button(
-  {
-    customId: /^ticket_delete_\d+$/,
-  },
+const ticketReopenButton = new Button(
+  { customId: 'ticket_reopen' },
   async (interaction) => {
-    if (!interaction.inCachedGuild() || !interaction.channel) return;
+    if (!interaction.inCachedGuild()) return;
 
-    try {
-      await interaction.channel.delete();
-
-      await interaction.user.send({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle('Ticket Supprimé')
-            .setDescription(
-              `Votre ticket dans **${interaction.guild.name}** a été supprimé.\n` +
-              `**ID du ticket** : ${interaction.channel.id}\n` +
-              `**Supprimé le** : ${new Date().toLocaleString('fr-FR')}`,
-            )
-            .setColor(Colors.Blurple),
-        ],
-      });
-    } catch (error) {
-      console.error('[ERROR] Failed to delete ticket:', error);
+    const ticket = await Ticket.findOne({
+      guildId: interaction.guild.id,
+      channelId: interaction.channelId,
+    });
+    if (!ticket) {
       await interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setDescription('`❌` Erreur lors de la suppression du ticket.')
+            .setDescription('`❌` Ticket non trouvé.')
             .setColor(Colors.Red),
         ],
         ephemeral: true,
       });
+      return;
     }
+
+    await interaction.channel?.edit({
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        {
+          id: ticket.userId,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+          ],
+        },
+        {
+          id: interaction.client.user.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+          ],
+        },
+      ],
+    });
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ticket_close')
+        .setLabel('Fermer')
+        .setStyle(ButtonStyle.Danger),
+    );
+
+    await interaction.reply({
+      content: `<@${ticket.userId}>`,
+      embeds: [
+        new EmbedBuilder()
+          .setDescription('Le ticket a été rouvert.')
+          .setColor(Colors.Green),
+      ],
+      components: [row],
+    });
+
+    ticket.lastActivity = new Date();
+    await ticket.save();
   },
 );
+
+const ticketDeleteButton = new Button(
+  { customId: 'ticket_delete' },
+  async (interaction) => {
+    if (!interaction.inCachedGuild()) return;
+
+    const ticket = await Ticket.findOne({
+      guildId: interaction.guild.id,
+      channelId: interaction.channelId,
+    });
+    if (!ticket) {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription('`❌` Ticket non trouvé.')
+            .setColor(Colors.Red),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    // Enregistrer la transcription
+    const messages = await interaction.channel?.messages.fetch({ limit: 100 });
+    if (messages) {
+      const transcriptMessages = messages
+        .filter((msg) => !msg.author.bot)
+        .map((msg) => ({
+          authorId: msg.author.id,
+          content: msg.content || '[Aucun contenu]',
+          timestamp: msg.createdAt,
+        }))
+        .reverse();
+
+      const transcript = new TicketTranscript({
+        guildId: interaction.guild.id,
+        ticketId: interaction.channelId,
+        userId: ticket.userId,
+        messages: transcriptMessages,
+      });
+      await transcript.save();
+    }
+
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setDescription('`✅` Le ticket sera supprimé dans 5 secondes.')
+          .setColor(Colors.Green),
+      ],
+    });
+
+    setTimeout(async () => {
+      await interaction.channel?.delete().catch(() => {});
+      await Ticket.deleteOne({ channelId: interaction.channelId });
+    }, 5000);
+  },
+);
+
+module.exports = [
+  ticketCreateButton,
+  ticketCloseButton,
+  ticketReopenButton,
+  ticketDeleteButton,
+];
