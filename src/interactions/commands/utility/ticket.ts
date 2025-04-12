@@ -564,6 +564,19 @@ export default new ChatInput(
           const rawStyle = interaction.options.getString('style');
           const title = interaction.options.getString('title');
 
+          // Vérification manuelle des options requises
+          if (!label || !emojiInput || !description) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription('`❌` Les options `label`, `emoji` et `description` sont requises.')
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
           const emoji = await resolveEmoji(emojiInput, interaction.guild);
           if (!emoji) {
             await interaction.reply({
