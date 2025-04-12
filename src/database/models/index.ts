@@ -12,9 +12,6 @@ import ReportConfig from './reportConfig';
 import Blacklist from './blacklist';
 import GuildConfig from './guildConfig';
 import MonitoredMessage from './monitoredMessage';
-import Ticket from './ticket';
-import TicketConfig from './ticketConfig';
-import TicketTranscript from './ticketTranscript';
 export * as Utils from './util';
 
 export {
@@ -32,7 +29,4 @@ export {
   Blacklist,
   GuildConfig,
   MonitoredMessage,
-  Ticket,
-  TicketConfig,
-  TicketTranscript,
 };
