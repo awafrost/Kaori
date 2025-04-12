@@ -5,22 +5,22 @@ import type { TicketConfig } from '../zod';
 const { Schema, model, models } = mongoose;
 
 const TicketConfigSchema = new Schema<z.infer<typeof TicketConfig>>({
-  guildId: { type: Schema.Types.String, required: true },
-  ticketChannelId: { type: Schema.Types.String, required: false },
-  ticketCategoryId: { type: Schema.Types.String, required: false },
+  guildId: Schema.Types.String,
+  ticketChannelId: Schema.Types.String,
+  ticketCategoryId: Schema.Types.String,
   ticketButtons: [
     {
-      customId: { type: Schema.Types.String, required: true },
-      emoji: { type: Schema.Types.String, required: true },
-      embedTitle: { type: Schema.Types.String, required: false },
-      embedDescription: { type: Schema.Types.String, required: false },
-      style: { type: Schema.Types.String, enum: ['primary', 'secondary', 'success'], required: false },
+      label: Schema.Types.String,
+      customId: Schema.Types.String,
+      embedTitle: Schema.Types.String,
+      embedDescription: Schema.Types.String,
+      style: Schema.Types.String,
     },
   ],
-  embedTitle: { type: Schema.Types.String, required: false },
-  embedDescription: { type: Schema.Types.String, required: false },
-  embedColor: { type: Schema.Types.String, required: false },
-  embedImage: { type: Schema.Types.String, required: false }, // New field
+  embedTitle: Schema.Types.String,
+  embedDescription: Schema.Types.String,
+  embedColor: Schema.Types.String,
+  embedImage: Schema.Types.String,
   createdAt: { type: Schema.Types.Date, default: Date.now },
 });
 

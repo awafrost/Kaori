@@ -1,21 +1,27 @@
-import { z } from 'zod';
+import * as z from 'zod';
+import { Snowflake } from './util';
 
 export const TicketConfig = z.object({
-  guildId: z.string(),
-  ticketChannelId: z.string().optional(),
-  ticketCategoryId: z.string().optional(),
-  ticketButtons: z.array(
-    z.object({
-      customId: z.string(),
-      emoji: z.string(),
-      embedTitle: z.string().optional(),
-      embedDescription: z.string().optional(),
-      style: z.enum(['primary', 'secondary', 'success']).optional(),
-    }),
-  ),
-  embedTitle: z.string().optional(),
-  embedDescription: z.string().optional(),
-  embedColor: z.string().optional(),
-  embedImage: z.string().url().optional(), // New field for image URL
+  guildId: Snowflake,
+  ticketChannelId: Snowflake.nullable().optional(),
+  ticketCategoryId: Snowflake.nullable().optional(),
+  ticketButtons: z
+    .array(
+      z.object({
+        label: z.string(),
+        customId: z.string(),
+        embedTitle: z.string().nullable().optional(),
+        embedDescription: z.string().nullable().optional(),
+        style: z.enum(['primary', 'secondary', 'success']).optional(),
+      }),
+    )
+    .max(5)
+    .default([]),
+  embedTitle: z.string().nullable().optional(),
+  embedDescription: z.string().nullable().optional(),
+  embedColor: z.string().nullable().optional(),
+  embedImage: z.string().nullable().optional(),
   createdAt: z.date().optional(),
 });
+
+export type TicketConfig = z.infer<typeof TicketConfig>;

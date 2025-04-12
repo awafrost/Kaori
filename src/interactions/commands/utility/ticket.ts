@@ -9,36 +9,8 @@ import {
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
+  ColorResolvable,
 } from 'discord.js';
-
-async function resolveEmoji(input: string, guild: any): Promise<string | null> {
-  // Cas 1 : Emoji Unicode (ex. 📩)
-  if (/^[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+$/u.test(input)) {
-    return input;
-  }
-
-  // Cas 2 : Format Discord <:nom:ID> ou <a:nom:ID>
-  const discordEmojiMatch = input.match(/^<a?:([^\s:]+):(\d+)>$/);
-  if (discordEmojiMatch) {
-    return discordEmojiMatch[2]; // Retourne l'ID
-  }
-
-  // Cas 3 : Nom brut (ex. :zorangetasses:)
-  const nameMatch = input.match(/^:([^\s:]+):$/);
-  if (nameMatch) {
-    const emojiName = nameMatch[1];
-    const emoji = guild.emojis.cache.find((e: any) => e.name === emojiName);
-    return emoji ? emoji.id : null;
-  }
-
-  // Cas 4 : ID brut
-  if (/^\d+$/.test(input)) {
-    const emoji = guild.emojis.cache.get(input);
-    return emoji ? input : null;
-  }
-
-  return null;
-}
 
 export default new ChatInput(
   {
@@ -112,7 +84,7 @@ export default new ChatInput(
             options: [
               {
                 name: 'button_index',
-                description: 'Index du bouton à supprimer (1 à 5, voir la liste ci-dessous)',
+                description: 'Index du bouton à supprimer (1 à 5)',
                 type: ApplicationCommandOptionType.Integer,
                 required: true,
                 min_value: 1,
@@ -133,14 +105,8 @@ export default new ChatInput(
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
-                name: 'emoji',
-                description: 'Emoji du bouton (ex. 📩, :nom:, ou <:nom:ID>)',
-                type: ApplicationCommandOptionType.String,
-                required: true,
-              },
-              {
-                name: 'description',
-                description: "Description de l'embed du ticket",
+                name: 'label',
+                description: 'Texte du bouton',
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
@@ -157,9 +123,15 @@ export default new ChatInput(
               },
               {
                 name: 'title',
-                description: "Titre de l'embed du ticket (optionnel)",
+                description: "Titre de l'embed du ticket",
                 type: ApplicationCommandOptionType.String,
                 required: false,
+              },
+              {
+                name: 'description',
+                description: "Description de l'embed du ticket",
+                type: ApplicationCommandOptionType.String,
+                required: true,
               },
             ],
           },
@@ -210,7 +182,6 @@ export default new ChatInput(
           return;
         }
 
-        // Validate embed_image if provided
         if (embedImage && !/^https?:\/\/.*\.(png|jpg|jpeg|gif)$/i.test(embedImage)) {
           await interaction.reply({
             embeds: [
@@ -315,43 +286,24 @@ export default new ChatInput(
             success: ButtonStyle.Success,
           };
 
-          const buttons = [];
-          for (const btn of config.ticketButtons) {
-            if (!btn.emoji) {
-              console.warn(`[WARN] Skipping button ${btn.customId}: missing emoji`);
-              continue;
-            }
-            const emojiId = await resolveEmoji(btn.emoji, interaction.guild);
-            if (!emojiId) {
-              console.warn(`[WARN] Skipping button ${btn.customId}: invalid emoji ${btn.emoji}`);
-              continue;
-            }
-
-            const button = new ButtonBuilder()
-              .setCustomId(btn.customId)
-              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary)
-              .setEmoji(emojiId);
-            buttons.push(button);
-          }
-
-          if (!buttons.length) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription('`❌` Aucun bouton valide trouvé.')
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
-
-          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            config.ticketButtons.map((btn) => {
+              const button = new ButtonBuilder()
+                .setCustomId(btn.customId)
+                .setLabel(btn.label)
+                .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary);
+              return button;
+            }),
+          );
 
           const embed = new EmbedBuilder()
             .setTitle(config.embedTitle ?? null)
             .setDescription(config.embedDescription ?? null)
-            .setColor((config.embedColor as any) || Colors.Blurple);
+            .setColor(
+              config.embedColor && /^#[0-9A-F]{6}$/i.test(config.embedColor)
+                ? config.embedColor as ColorResolvable
+                : Colors.Blurple,
+            );
 
           if (config.embedImage) {
             embed.setImage(config.embedImage);
@@ -402,15 +354,7 @@ export default new ChatInput(
 
           const buttons = config.ticketButtons.length
             ? config.ticketButtons
-                .map((btn, index) =>
-                  btn.emoji
-                    ? `${index + 1}. ${
-                        btn.emoji.match(/^\d+$/)
-                          ? `<:${btn.emoji}:${btn.emoji}>`
-                          : btn.emoji
-                      } (${btn.style || 'primary'})`
-                    : `${index + 1}. Bouton invalide (emoji manquant)`,
-                )
+                .map((btn, index) => `${index + 1}. ${btn.label} (${btn.style || 'primary'})`)
                 .join('\n')
             : 'Aucun bouton configuré.';
 
@@ -479,19 +423,10 @@ export default new ChatInput(
 
           const buttonsList = config.ticketButtons.length
             ? config.ticketButtons
-                .map((btn, index) =>
-                  btn.emoji
-                    ? `${index + 1}. ${
-                        btn.emoji.match(/^\d+$/)
-                          ? `<:${btn.emoji}:${btn.emoji}>`
-                          : btn.emoji
-                      } (${btn.style || 'primary'})`
-                    : `${index + 1}. Bouton invalide (emoji manquant)`,
-                )
+                .map((btn, index) => `${index + 1}. ${btn.label} (${btn.style || 'primary'})`)
                 .join('\n')
             : 'Aucun bouton configuré.';
 
-          // Convert 1-based index to 0-based
           const index = buttonIndex - 1;
           if (index < 0 || index >= config.ticketButtons.length) {
             await interaction.reply({
@@ -516,24 +451,10 @@ export default new ChatInput(
               new EmbedBuilder()
                 .setTitle('Bouton Supprimé')
                 .setDescription(
-                  `\`✅\` Bouton supprimé : ${
-                    removedButton.emoji
-                      ? removedButton.emoji.match(/^\d+$/)
-                        ? `<:${removedButton.emoji}:${removedButton.emoji}>`
-                        : removedButton.emoji
-                      : '(emoji manquant)'
-                  }\n\n**Boutons restants** :\n${
+                  `\`✅\` Bouton supprimé : ${removedButton.label}\n\n**Boutons restants** :\n${
                     config.ticketButtons.length
                       ? config.ticketButtons
-                          .map((btn, i) =>
-                            btn.emoji
-                              ? `${i + 1}. ${
-                                  btn.emoji.match(/^\d+$/)
-                                    ? `<:${btn.emoji}:${btn.emoji}>`
-                                    : btn.emoji
-                                } (${btn.style || 'primary'})`
-                              : `${i + 1}. Bouton invalide (emoji manquant)`,
-                          )
+                          .map((btn, i) => `${i + 1}. ${btn.label} (${btn.style || 'primary'})`)
                           .join('\n')
                       : 'Aucun bouton configuré.'
                   }`,
@@ -562,25 +483,10 @@ export default new ChatInput(
       // Sous-commande : add
       if (subcommand === 'add') {
         try {
-          const emojiInput = interaction.options.getString('emoji', true); // Required
-          const description = interaction.options.getString('description', true); // Required
+          const label = interaction.options.getString('label', true);
           const rawStyle = interaction.options.getString('style');
           const title = interaction.options.getString('title');
-
-          const emoji = await resolveEmoji(emojiInput, interaction.guild);
-          if (!emoji) {
-            await interaction.reply({
-              embeds: [
-                new EmbedBuilder()
-                  .setDescription(
-                    '`❌` Emoji invalide. Utilisez un emoji Unicode (📩), un nom (:nom:), ou un ID. Assurez-vous que l’emoji existe dans ce serveur.',
-                  )
-                  .setColor(Colors.Red),
-              ],
-              ephemeral: true,
-            });
-            return;
-          }
+          const description = interaction.options.getString('description', true);
 
           const validStyles = ['primary', 'secondary', 'success'] as const;
           const style:
@@ -623,8 +529,8 @@ export default new ChatInput(
 
           const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
           config.ticketButtons.push({
+            label,
             customId,
-            emoji,
             style,
             embedTitle: title ?? undefined,
             embedDescription: description,
@@ -635,11 +541,7 @@ export default new ChatInput(
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(
-                  `\`✅\` Bouton ajouté avec l'emoji : ${
-                    emoji.match(/^\d+$/) ? `<:${emoji}:${emoji}>` : emoji
-                  }`,
-                )
+                .setDescription(`\`✅\` Bouton ajouté : ${label}`)
                 .setColor(Colors.Green),
             ],
             ephemeral: true,
