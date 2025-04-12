@@ -1,5 +1,5 @@
 import { ChatInput } from '@akki256/discord-interaction';
-import { TicketConfig, TicketTranscript } from '@models';
+import { TicketConfig } from '@models';
 import {
   ActionRowBuilder,
   ApplicationCommandOptionType,
@@ -65,6 +65,11 @@ export default new ChatInput(
             description: 'Envoyer l\'embed des tickets dans le salon configuré',
             type: ApplicationCommandOptionType.Subcommand,
           },
+          {
+            name: 'status',
+            description: 'Voir la configuration actuelle du système de tickets',
+            type: ApplicationCommandOptionType.Subcommand,
+          },
         ],
       },
       {
@@ -110,31 +115,6 @@ export default new ChatInput(
           },
         ],
       },
-      {
-        name: 'premium',
-        description: 'Gérer les fonctionnalités premium',
-        type: ApplicationCommandOptionType.SubcommandGroup,
-        options: [
-          {
-            name: 'enable',
-            description: 'Activer les fonctionnalités premium pour ce serveur',
-            type: ApplicationCommandOptionType.Subcommand,
-          },
-          {
-            name: 'transcript',
-            description: 'Voir la transcription d\'un ticket',
-            type: ApplicationCommandOptionType.Subcommand,
-            options: [
-              {
-                name: 'ticket_id',
-                description: 'ID du salon du ticket',
-                type: ApplicationCommandOptionType.String,
-                required: true,
-              },
-            ],
-          },
-        ],
-      },
     ],
     dmPermission: false,
     defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
@@ -145,8 +125,6 @@ export default new ChatInput(
 
     const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
-    const MAIN_SERVER_ID = '1256649889664995409';
-    const PREMIUM_ROLE_ID = '1360543319637233765';
 
     // Groupe : config
     if (subcommandGroup === 'config') {
@@ -287,16 +265,67 @@ export default new ChatInput(
         });
         setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
+
+      // Sous-commande : status
+      else if (subcommand === 'status') {
+        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+        if (!config) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Aucune configuration trouvée. Utilisez `/ticket config setup` pour commencer.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const buttons = config.ticketButtons.length
+          ? config.ticketButtons.map((btn) => `- ${btn.emoji} (${btn.style || 'primary'})`).join('\n')
+          : 'Aucun bouton configuré.';
+
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('Configuration des Tickets')
+              .setDescription(
+                `**Salon** : ${config.ticketChannelId ? `<#${config.ticketChannelId}>` : 'Non défini'}\n` +
+                `**Catégorie** : ${config.ticketCategoryId ? `<#${config.ticketCategoryId}>` : 'Non défini'}\n` +
+                `**Titre de l'embed** : ${config.embedTitle || 'Ouvrir un Ticket'}\n` +
+                `**Description de l'embed** : ${config.embedDescription || 'Cliquez sur un bouton pour créer un ticket.'}\n` +
+                `**Couleur de l'embed** : ${config.embedColor || '#131416'}\n` +
+                `**Boutons** :\n${buttons}`,
+              )
+              .setColor(Colors.Blurple),
+          ],
+          ephemeral: true,
+        });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+      }
     }
 
     // Groupe : button
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        const emoji = interaction.options.getString('emoji', true);
-        const description = interaction.options.getString('description', true);
+        // Vérification manuelle pour éviter TypeError
+        const emoji = interaction.options.getString('emoji');
+        const description = interaction.options.getString('description');
         const rawStyle = interaction.options.getString('style');
         const title = interaction.options.getString('title');
+
+        if (!emoji || !description) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Les options `emoji` et `description` sont requises.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
 
         // Validate the style to match the allowed enum values
         const validStyles = ['primary', 'secondary', 'success'] as const;
@@ -320,18 +349,13 @@ export default new ChatInput(
           return;
         }
 
-        const isPremium =
-          config.premiumUserId &&
-          (await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID));
-        const maxButtons = isPremium ? 5 : 3;
+        const maxButtons = 5; // Plus de premium, limite fixée à 5
         if (config.ticketButtons.length >= maxButtons) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`❌\` Limite de boutons atteinte (${maxButtons}). ${
-                    isPremium ? '' : 'Activez le premium pour ajouter plus de boutons.'
-                  }`,
+                  `\`❌\` Limite de boutons atteinte (${maxButtons}).`,
                 )
                 .setColor(Colors.Red),
             ],
@@ -342,7 +366,7 @@ export default new ChatInput(
 
         const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
         config.ticketButtons.push({
-          label: emoji, // Utiliser l'emoji comme label pour compatibilité
+          label: emoji, // Pour compatibilité
           customId,
           emoji,
           style,
@@ -363,160 +387,5 @@ export default new ChatInput(
         setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
-
-    // Groupe : premium
-    else if (subcommandGroup === 'premium') {
-      // Sous-commande : enable
-      if (subcommand === 'enable') {
-        const hasPremium = await checkPremium(
-          interaction,
-          MAIN_SERVER_ID,
-          PREMIUM_ROLE_ID,
-        );
-        if (!hasPremium) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Vous devez avoir le rôle premium sur le serveur principal pour activer cette fonctionnalité.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config) {
-          config = new TicketConfig({
-            guildId: interaction.guild.id,
-            premiumUserId: interaction.user.id,
-            ticketButtons: [],
-          });
-        } else if (
-          config.premiumUserId &&
-          config.premiumUserId !== interaction.user.id
-        ) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Le premium est déjà activé par un autre utilisateur sur ce serveur.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        } else {
-          config.premiumUserId = interaction.user.id;
-        }
-
-        const otherConfig = await TicketConfig.findOne({
-          premiumUserId: interaction.user.id,
-          guildId: { $ne: interaction.guild.id },
-        });
-        if (otherConfig) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Vous avez déjà activé le premium sur un autre serveur.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        await config.save();
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription('`✅` Fonctionnalités premium activées pour ce serveur.')
-              .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-      }
-
-      // Sous-commande : transcript
-      else if (subcommand === 'transcript') {
-        const ticketId = interaction.options.getString('ticket_id', true);
-
-        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (
-          !config?.premiumUserId ||
-          !(await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID))
-        ) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Cette fonctionnalité nécessite un abonnement premium.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const transcript = await TicketTranscript.findOne({
-          guildId: interaction.guild.id,
-          ticketId,
-        });
-
-        if (!transcript) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Aucune transcription trouvée pour ce ticket.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const messages = transcript.messages
-          .map(
-            (msg) =>
-              `[${new Date(msg.timestamp).toLocaleString()}] <@${
-                msg.authorId
-              }>: ${msg.content}`,
-          )
-          .join('\n');
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(`Transcription du Ticket ${ticketId}`)
-              .setDescription(messages || 'Aucun message enregistré.')
-              .setColor(Colors.Blurple),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
-      }
-    }
   },
 );
-
-async function checkPremium(
-  interaction: any,
-  mainServerId: string,
-  premiumRoleId: string,
-) {
-  try {
-    const mainGuild = await interaction.client.guilds.fetch(mainServerId);
-    const member = await mainGuild.members.fetch(interaction.user.id);
-    return member.roles.cache.has(premiumRoleId);
-  } catch {
-    return false;
-  }
-}
