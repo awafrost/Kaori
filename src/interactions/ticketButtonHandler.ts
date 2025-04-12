@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 
 const ticketCreateButton = new Button(
-  { customId: /^ticket_create_[0-2]_[0-9]+$/ },
+  { customId: /^ticket_create_[0-4]_[0-9]+$/ }, // Jusqu'à 5 boutons (0-4)
   async (interaction) => {
     if (!interaction.inCachedGuild()) return;
 
@@ -62,6 +62,14 @@ const ticketCreateButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_close')
         .setLabel('Fermer')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('ticket_transcript')
+        .setLabel('Transcription')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('ticket_delete')
+        .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
     );
 
@@ -166,6 +174,11 @@ const ticketCloseButton = new Button(
         .setLabel('Rouvrir')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
+        .setCustomId('ticket_transcript')
+        .setLabel('Transcription')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true), // Désactiver après fermeture
+      new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
@@ -182,6 +195,25 @@ const ticketCloseButton = new Button(
       ],
       components: [row],
     });
+
+    // Envoyer un DM à l'utilisateur
+    try {
+      const user = await interaction.client.users.fetch(ticket.userId);
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('Ticket Fermé')
+            .setDescription(
+              `Votre ticket dans **${interaction.guild.name}** a été fermé.\n` +
+              `**ID du ticket** : ${ticket.channelId}\n` +
+              `**Fermé le** : ${new Date().toLocaleString()}`,
+            )
+            .setColor(Colors.Red),
+        ],
+      });
+    } catch (error) {
+      console.error(`Impossible d'envoyer un DM à ${ticket.userId} :`, error);
+    }
 
     ticket.lastActivity = new Date();
     await ticket.save();
@@ -233,6 +265,14 @@ const ticketReopenButton = new Button(
       new ButtonBuilder()
         .setCustomId('ticket_close')
         .setLabel('Fermer')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('ticket_transcript')
+        .setLabel('Transcription')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('ticket_delete')
+        .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
     );
 
@@ -301,10 +341,89 @@ const ticketDeleteButton = new Button(
       ],
     });
 
+    // Envoyer un DM à l'utilisateur
+    try {
+      const user = await interaction.client.users.fetch(ticket.userId);
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('Ticket Supprimé')
+            .setDescription(
+              `Votre ticket dans **${interaction.guild.name}** a été supprimé.\n` +
+              `**ID du ticket** : ${ticket.channelId}\n` +
+              `**Supprimé le** : ${new Date().toLocaleString()}`,
+            )
+            .setColor(Colors.Red),
+        ],
+      });
+    } catch (error) {
+      console.error(`Impossible d'envoyer un DM à ${ticket.userId} :`, error);
+    }
+
     setTimeout(async () => {
       await interaction.channel?.delete().catch(() => {});
       await Ticket.deleteOne({ channelId: interaction.channelId });
     }, 5000);
+  },
+);
+
+const ticketTranscriptButton = new Button(
+  { customId: 'ticket_transcript' },
+  async (interaction) => {
+    if (!interaction.inCachedGuild()) return;
+
+    const ticket = await Ticket.findOne({
+      guildId: interaction.guild.id,
+      channelId: interaction.channelId,
+    });
+    if (!ticket) {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription('`❌` Ticket non trouvé.')
+            .setColor(Colors.Red),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const transcript = await TicketTranscript.findOne({
+      guildId: interaction.guild.id,
+      ticketId: interaction.channelId,
+    });
+
+    if (!transcript) {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription('`❌` Aucune transcription trouvée pour ce ticket.')
+            .setColor(Colors.Red),
+        ],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const messages = transcript.messages
+      .map(
+        (msg) =>
+          `[${new Date(msg.timestamp).toLocaleString()}] <@${
+            msg.authorId
+          }>: ${msg.content}`,
+      )
+      .join('\n');
+
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`Transcription du Ticket ${interaction.channelId}`)
+          .setDescription(messages || 'Aucun message enregistré.')
+          .setColor(Colors.Blurple),
+      ],
+      ephemeral: true,
+    });
+    setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
   },
 );
 
@@ -313,4 +432,5 @@ module.exports = [
   ticketCloseButton,
   ticketReopenButton,
   ticketDeleteButton,
+  ticketTranscriptButton,
 ];

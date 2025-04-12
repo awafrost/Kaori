@@ -5,6 +5,7 @@ import {
   ApplicationCommandOptionType,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
@@ -29,12 +30,14 @@ export default new ChatInput(
                 name: 'channel',
                 description: 'Salon où envoyer l\'embed des tickets',
                 type: ApplicationCommandOptionType.Channel,
+                channelTypes: [ChannelType.GuildText],
                 required: true,
               },
               {
                 name: 'category',
                 description: 'Catégorie où créer les tickets',
                 type: ApplicationCommandOptionType.Channel,
+                channelTypes: [ChannelType.GuildCategory],
                 required: true,
               },
               {
@@ -79,6 +82,23 @@ export default new ChatInput(
                 description: 'Texte du bouton',
                 type: ApplicationCommandOptionType.String,
                 required: true,
+              },
+              {
+                name: 'emoji',
+                description: 'Emoji du bouton (ex. 📩 ou <:nom:ID>)',
+                type: ApplicationCommandOptionType.String,
+                required: false,
+              },
+              {
+                name: 'style',
+                description: 'Couleur du bouton',
+                type: ApplicationCommandOptionType.String,
+                choices: [
+                  { name: 'Bleu', value: 'primary' },
+                  { name: 'Gris', value: 'secondary' },
+                  { name: 'Vert', value: 'success' },
+                ],
+                required: false,
               },
               {
                 name: 'title',
@@ -155,7 +175,7 @@ export default new ChatInput(
           });
           return;
         }
-        if (category.type !== 4) {
+        if (category.type !== ChannelType.GuildCategory) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
@@ -173,11 +193,11 @@ export default new ChatInput(
             guildId: interaction.guild.id,
             ticketChannelId: channel.id,
             ticketCategoryId: category.id,
-            ticketButtons: [], // Toujours initialisé
+            ticketButtons: [],
             embedTitle: embedTitle || 'Ouvrir un Ticket',
             embedDescription:
               embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
-            embedColor: embedColor || '#5865F2', // Par défaut : Blurple
+            embedColor: embedColor || '#5865F2',
           });
         } else {
           config.ticketChannelId = channel.id;
@@ -237,20 +257,28 @@ export default new ChatInput(
           return;
         }
 
+        const styleMap: Record<string, ButtonStyle> = {
+          primary: ButtonStyle.Primary,
+          secondary: ButtonStyle.Secondary,
+          success: ButtonStyle.Success,
+        };
+
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          config.ticketButtons.map((btn) =>
-            new ButtonBuilder()
+          config.ticketButtons.map((btn) => {
+            const button = new ButtonBuilder()
               .setCustomId(btn.customId)
               .setLabel(btn.label)
-              .setStyle(ButtonStyle.Primary),
-          ),
+              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary);
+            if (btn.emoji) button.setEmoji(btn.emoji);
+            return button;
+          }),
         );
 
         await channel.send({
           embeds: [
             new EmbedBuilder()
-              .setTitle(config.embedTitle ?? null) // Convertir undefined en null
-              .setDescription(config.embedDescription ?? null) // Convertir undefined en null
+              .setTitle(config.embedTitle ?? null)
+              .setDescription(config.embedDescription ?? null)
               .setColor((config.embedColor as any) || Colors.Blurple),
           ],
           components: [row],
@@ -273,8 +301,17 @@ export default new ChatInput(
       // Sous-commande : add
       if (subcommand === 'add') {
         const label = interaction.options.getString('label', true);
+        const emoji = interaction.options.getString('emoji');
+        const rawStyle = interaction.options.getString('style');
         const title = interaction.options.getString('title', true);
         const description = interaction.options.getString('description', true);
+
+        // Validate the style to match the allowed enum values
+        const validStyles = ['primary', 'secondary', 'success'] as const;
+        const style: 'primary' | 'secondary' | 'success' | undefined = rawStyle &&
+          validStyles.includes(rawStyle as any) // Temporary cast to bypass TS issue
+          ? rawStyle as 'primary' | 'secondary' | 'success'
+          : undefined;
 
         let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
@@ -294,15 +331,14 @@ export default new ChatInput(
         const isPremium =
           config.premiumUserId &&
           (await checkPremium(interaction, MAIN_SERVER_ID, PREMIUM_ROLE_ID));
-        if (config.ticketButtons.length >= (isPremium ? 3 : 1)) {
+        const maxButtons = isPremium ? 5 : 3;
+        if (config.ticketButtons.length >= maxButtons) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  `\`❌\` Limite de boutons atteinte (${isPremium ? 3 : 1}). ${
-                    isPremium
-                      ? ''
-                      : 'Activez le premium pour ajouter plus de boutons.'
+                  `\`❌\` Limite de boutons atteinte (${maxButtons}). ${
+                    isPremium ? '' : 'Activez le premium pour ajouter plus de boutons.'
                   }`,
                 )
                 .setColor(Colors.Red),
@@ -316,6 +352,8 @@ export default new ChatInput(
         config.ticketButtons.push({
           label,
           customId,
+          emoji,
+          style,
           embedTitle: title,
           embedDescription: description,
         });
@@ -362,7 +400,7 @@ export default new ChatInput(
           config = new TicketConfig({
             guildId: interaction.guild.id,
             premiumUserId: interaction.user.id,
-            ticketButtons: [], // Toujours initialisé
+            ticketButtons: [],
           });
         } else if (
           config.premiumUserId &&

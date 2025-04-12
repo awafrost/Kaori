@@ -12,14 +12,16 @@ export const TicketConfig = z.object({
         customId: z.string(),
         embedTitle: z.string().nullable().optional(),
         embedDescription: z.string().nullable().optional(),
+        emoji: z.string().nullable().optional(),
+        style: z.enum(['primary', 'secondary', 'success']).optional(), // Limité à trois styles
       }),
     )
-    .max(3)
-    .default([]), // Tableau vide par défaut
+    .max(5) // Limite max pour premium
+    .default([]),
   premiumUserId: Snowflake.nullable().optional(),
-  embedTitle: z.string().nullable().optional(), // Titre de l'embed principal
-  embedDescription: z.string().nullable().optional(), // Description de l'embed principal
-  embedColor: z.string().nullable().optional(), // Couleur de l'embed principal
+  embedTitle: z.string().nullable().optional(),
+  embedDescription: z.string().nullable().optional(),
+  embedColor: z.string().nullable().optional(),
   createdAt: z.date().optional(),
 });
 
