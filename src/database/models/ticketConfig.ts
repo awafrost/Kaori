@@ -20,6 +20,7 @@ const TicketConfigSchema = new Schema<z.infer<typeof TicketConfig>>({
   embedTitle: { type: Schema.Types.String, required: false },
   embedDescription: { type: Schema.Types.String, required: false },
   embedColor: { type: Schema.Types.String, required: false },
+  embedImage: { type: Schema.Types.String, required: false }, // New field
   createdAt: { type: Schema.Types.Date, default: Date.now },
 });
 

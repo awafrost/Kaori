@@ -10,6 +10,9 @@ import {
   EmbedBuilder,
   PermissionFlagsBits,
   StringSelectMenuBuilder,
+  Client,
+  Interaction,
+  StringSelectMenuInteraction,
 } from 'discord.js';
 
 async function resolveEmoji(input: string, guild: any): Promise<string | null> {
@@ -41,6 +44,9 @@ async function resolveEmoji(input: string, guild: any): Promise<string | null> {
   return null;
 }
 
+// Export the client for use in buttonHandlers.ts
+export let clientInstance: Client;
+
 export default new ChatInput(
   {
     name: 'ticket',
@@ -53,12 +59,12 @@ export default new ChatInput(
         options: [
           {
             name: 'setup',
-            description: 'Configurer le salon, la catégorie et l\'embed des tickets',
+            description: "Configurer le salon, la catégorie et l'embed des tickets",
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
                 name: 'channel',
-                description: 'Salon où envoyer l\'embed des tickets',
+                description: "Salon où envoyer l'embed des tickets",
                 type: ApplicationCommandOptionType.Channel,
                 channelTypes: [ChannelType.GuildText],
                 required: true,
@@ -72,13 +78,13 @@ export default new ChatInput(
               },
               {
                 name: 'embed_title',
-                description: 'Titre de l\'embed des tickets',
+                description: "Titre de l'embed des tickets",
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
               {
                 name: 'embed_description',
-                description: 'Description de l\'embed des tickets',
+                description: "Description de l'embed des tickets",
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
@@ -88,11 +94,17 @@ export default new ChatInput(
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
+              {
+                name: 'embed_image',
+                description: "URL de l'image pour l'embed (ex. https://example.com/image.png)",
+                type: ApplicationCommandOptionType.String,
+                required: false,
+              },
             ],
           },
           {
             name: 'send',
-            description: 'Envoyer l\'embed des tickets dans le salon configuré',
+            description: "Envoyer l'embed des tickets dans le salon configuré",
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
@@ -125,7 +137,7 @@ export default new ChatInput(
               },
               {
                 name: 'description',
-                description: 'Description de l\'embed du ticket',
+                description: "Description de l'embed du ticket",
                 type: ApplicationCommandOptionType.String,
                 required: true,
               },
@@ -142,7 +154,7 @@ export default new ChatInput(
               },
               {
                 name: 'title',
-                description: 'Titre de l\'embed du ticket (optionnel)',
+                description: "Titre de l'embed du ticket (optionnel)",
                 type: ApplicationCommandOptionType.String,
                 required: false,
               },
@@ -170,6 +182,7 @@ export default new ChatInput(
         const embedTitle = interaction.options.getString('embed_title');
         const embedDescription = interaction.options.getString('embed_description');
         const embedColor = interaction.options.getString('embed_color');
+        const embedImage = interaction.options.getString('embed_image');
 
         if (!channel.isTextBased()) {
           await interaction.reply({
@@ -194,6 +207,19 @@ export default new ChatInput(
           return;
         }
 
+        // Validate embed_image if provided
+        if (embedImage && !/^https?:\/\/.*\.(png|jpg|jpeg|gif)$/i.test(embedImage)) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` L\'URL de l\'image doit être un lien valide vers une image (png, jpg, jpeg, gif).')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
         let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
           config = new TicketConfig({
@@ -205,6 +231,7 @@ export default new ChatInput(
             embedDescription:
               embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
             embedColor: embedColor || '#131416',
+            embedImage: embedImage || undefined,
           });
         } else {
           config.ticketChannelId = channel.id;
@@ -215,6 +242,7 @@ export default new ChatInput(
             config.embedDescription ||
             'Cliquez sur un bouton pour créer un ticket.';
           config.embedColor = embedColor || config.embedColor || '#131416';
+          config.embedImage = embedImage || config.embedImage || undefined;
         }
 
         await config.save();
@@ -223,7 +251,8 @@ export default new ChatInput(
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}`,
+                `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}` +
+                (embedImage ? `\n- Image : ${embedImage}` : ''),
               )
               .setColor(Colors.Green),
           ],
@@ -299,13 +328,17 @@ export default new ChatInput(
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
+        const embed = new EmbedBuilder()
+          .setTitle(config.embedTitle ?? null)
+          .setDescription(config.embedDescription ?? null)
+          .setColor((config.embedColor as any) || Colors.Blurple);
+
+        if (config.embedImage) {
+          embed.setImage(config.embedImage);
+        }
+
         await channel.send({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle(config.embedTitle ?? null)
-              .setDescription(config.embedDescription ?? null)
-              .setColor((config.embedColor as any) || Colors.Blurple),
-          ],
+          embeds: [embed],
           components: [row],
         });
 
@@ -336,7 +369,9 @@ export default new ChatInput(
         }
 
         const buttons = config.ticketButtons.length
-          ? config.ticketButtons.map((btn) => `- ${btn.emoji} (${btn.style || 'primary'})`).join('\n')
+          ? config.ticketButtons
+              .map((btn) => `- ${btn.emoji} (${btn.style || 'primary'})`)
+              .join('\n')
           : 'Aucun bouton configuré.';
 
         await interaction.reply({
@@ -344,12 +379,28 @@ export default new ChatInput(
             new EmbedBuilder()
               .setTitle('Configuration des Tickets')
               .setDescription(
-                `**Salon** : ${config.ticketChannelId ? `<#${config.ticketChannelId}>` : 'Non défini'}\n` +
-                `**Catégorie** : ${config.ticketCategoryId ? `<#${config.ticketCategoryId}>` : 'Non défini'}\n` +
-                `**Titre de l'embed** : ${config.embedTitle || 'Ouvrir un Ticket'}\n` +
-                `**Description de l'embed** : ${config.embedDescription || 'Cliquez sur un bouton pour créer un ticket.'}\n` +
-                `**Couleur de l'embed** : ${config.embedColor || '#131416'}\n` +
-                `**Boutons** :\n${buttons}`,
+                `**Salon** : ${
+                  config.ticketChannelId
+                    ? `<#${config.ticketChannelId}>`
+                    : 'Non défini'
+                }\n` +
+                  `**Catégorie** : ${
+                    config.ticketCategoryId
+                      ? `<#${config.ticketCategoryId}>`
+                      : 'Non défini'
+                  }\n` +
+                  `**Titre de l'embed** : ${
+                    config.embedTitle || 'Ouvrir un Ticket'
+                  }\n` +
+                  `**Description de l'embed** : ${
+                    config.embedDescription ||
+                    'Cliquez sur un bouton pour créer un ticket.'
+                  }\n` +
+                  `**Couleur de l'embed** : ${config.embedColor || '#131416'}\n` +
+                  (config.embedImage
+                    ? `**Image de l'embed** : ${config.embedImage}\n`
+                    : '') +
+                  `**Boutons** :\n${buttons}`,
               )
               .setColor(Colors.Blurple),
           ],
@@ -382,17 +433,21 @@ export default new ChatInput(
                 ? btn.embedDescription.slice(0, 100)
                 : `Bouton ${index + 1}`,
               value: index.toString(),
-              emoji: btn.emoji,
+              emoji: btn.emoji.match(/^\d+$/) ? { id: btn.emoji } : btn.emoji,
             })),
           );
 
-        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          selectMenu,
+        );
 
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setTitle('Supprimer un Bouton')
-              .setDescription('Sélectionnez un bouton à supprimer dans le menu ci-dessous.')
+              .setDescription(
+                'Sélectionnez un bouton à supprimer dans le menu ci-dessous.',
+              )
               .setColor(Colors.Blurple),
           ],
           components: [row],
@@ -414,7 +469,9 @@ export default new ChatInput(
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription('`❌` Les options `emoji` et `description` sont requises.')
+                .setDescription(
+                  '`❌` Les options `emoji` et `description` sont requises.',
+                )
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
@@ -438,9 +495,12 @@ export default new ChatInput(
         }
 
         const validStyles = ['primary', 'secondary', 'success'] as const;
-        const style: 'primary' | 'secondary' | 'success' | undefined = rawStyle &&
-          validStyles.includes(rawStyle as any)
-          ? rawStyle as 'primary' | 'secondary' | 'success'
+        const style:
+          | 'primary'
+          | 'secondary'
+          | 'success'
+          | undefined = rawStyle && validStyles.includes(rawStyle as any)
+          ? (rawStyle as 'primary' | 'secondary' | 'success')
           : undefined;
 
         let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
@@ -478,7 +538,7 @@ export default new ChatInput(
           customId,
           emoji,
           style,
-          embedTitle: title,
+          embedTitle: title ?? undefined, // Convert null to undefined
           embedDescription: description,
         });
 
@@ -501,3 +561,48 @@ export default new ChatInput(
     }
   },
 );
+
+// Setup select menu handler
+export function setupSelectMenuHandler(client: Client) {
+  clientInstance = client; // Store client instance
+  client.on('interactionCreate', async (interaction: Interaction) => {
+    if (!interaction.isStringSelectMenu()) return;
+    if (!interaction.inCachedGuild()) return;
+
+    const selectInteraction = interaction as StringSelectMenuInteraction;
+
+    if (selectInteraction.customId === 'remove_ticket_button') {
+      const index = parseInt(selectInteraction.values[0]);
+      const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+      if (!config || index >= config.ticketButtons.length) {
+        await selectInteraction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription('`❌` Bouton non trouvé.')
+              .setColor(Colors.Red),
+          ],
+          components: [],
+        });
+        return;
+      }
+
+      const removedButton = config.ticketButtons.splice(index, 1)[0];
+      await config.save();
+
+      await selectInteraction.update({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription(
+              `\`✅\` Bouton supprimé : ${
+                removedButton.emoji.match(/^\d+$/)
+                  ? `<:${removedButton.emoji}:${removedButton.emoji}>`
+                  : removedButton.emoji
+              }`,
+            )
+            .setColor(Colors.Green),
+        ],
+        components: [],
+      });
+    }
+  });
+}
