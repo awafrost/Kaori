@@ -65,27 +65,23 @@ client.once(Events.ClientReady, async () => {
     type: ActivityType.Competing,
   });
 
-  // Clear existing commands to avoid stale data (one-time, can be removed after successful run)
+  // Clear existing global commands to ensure fresh registration (one-time, can be removed after success)
   try {
     await client.application?.commands.set([]);
-    console.log('[INFO] Cleared global commands to ensure fresh registration.');
-    if (process.env.GUILD_ID) {
-      const guild = client.guilds.cache.get(process.env.GUILD_ID);
-      if (guild) {
-        await guild.commands.set([]);
-        console.log(`[INFO] Cleared guild commands for ${guild.name}.`);
-      }
-    }
+    console.log('[INFO] Cleared all global commands to ensure fresh registration.');
   } catch (error) {
-    console.error('[ERROR] Failed to clear commands:', error);
+    console.error('[ERROR] Failed to clear global commands:', error);
   }
 
-  // Register the commands
-  await interactions.registerCommands({
-    syncWithCommand: true,
-    guildId: process.env.GUILD_ID, // Use guild-specific commands if GUILD_ID is set
-  });
-  console.log('[INFO] Commands registered successfully.');
+  // Register commands globally
+  try {
+    await interactions.registerCommands({
+      syncWithCommand: true,
+    });
+    console.log('[INFO] Successfully registered global commands.');
+  } catch (error) {
+    console.error('[ERROR] Failed to register global commands:', error);
+  }
 
   // Start ticket inactivity checker
   await startTicketInactivityChecker(client);
