@@ -78,16 +78,10 @@ export default new ChatInput(
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
-                name: 'label',
-                description: 'Texte du bouton',
-                type: ApplicationCommandOptionType.String,
-                required: true,
-              },
-              {
                 name: 'emoji',
                 description: 'Emoji du bouton (ex. 📩 ou <:nom:ID>)',
                 type: ApplicationCommandOptionType.String,
-                required: false,
+                required: true,
               },
               {
                 name: 'style',
@@ -102,9 +96,9 @@ export default new ChatInput(
               },
               {
                 name: 'title',
-                description: 'Titre de l\'embed du ticket',
+                description: 'Titre de l\'embed du ticket (optionnel)',
                 type: ApplicationCommandOptionType.String,
-                required: true,
+                required: false,
               },
               {
                 name: 'description',
@@ -267,7 +261,6 @@ export default new ChatInput(
           config.ticketButtons.map((btn) => {
             const button = new ButtonBuilder()
               .setCustomId(btn.customId)
-              .setLabel(btn.label)
               .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary);
             if (btn.emoji) button.setEmoji(btn.emoji);
             return button;
@@ -300,16 +293,15 @@ export default new ChatInput(
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        const label = interaction.options.getString('label', true);
-        const emoji = interaction.options.getString('emoji');
+        const emoji = interaction.options.getString('emoji', true);
         const rawStyle = interaction.options.getString('style');
-        const title = interaction.options.getString('title', true);
+        const title = interaction.options.getString('title');
         const description = interaction.options.getString('description', true);
 
         // Validate the style to match the allowed enum values
         const validStyles = ['primary', 'secondary', 'success'] as const;
         const style: 'primary' | 'secondary' | 'success' | undefined = rawStyle &&
-          validStyles.includes(rawStyle as any) // Temporary cast to bypass TS issue
+          validStyles.includes(rawStyle as any)
           ? rawStyle as 'primary' | 'secondary' | 'success'
           : undefined;
 
@@ -350,7 +342,7 @@ export default new ChatInput(
 
         const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
         config.ticketButtons.push({
-          label,
+          label: emoji, // Utiliser l'emoji comme label pour compatibilité
           customId,
           emoji,
           style,
@@ -363,7 +355,7 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(`\`✅\` Bouton ajouté : "${label}"`)
+              .setDescription(`\`✅\` Bouton ajouté avec l'emoji : ${emoji}`)
               .setColor(Colors.Green),
           ],
           ephemeral: true,

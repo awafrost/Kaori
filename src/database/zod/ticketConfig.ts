@@ -8,12 +8,12 @@ export const TicketConfig = z.object({
   ticketButtons: z
     .array(
       z.object({
-        label: z.string(),
+        label: z.string().optional(), // Conservé pour compatibilité, mais non utilisé pour l'affichage
         customId: z.string(),
         embedTitle: z.string().nullable().optional(),
         embedDescription: z.string().nullable().optional(),
-        emoji: z.string().nullable().optional(),
-        style: z.enum(['primary', 'secondary', 'success']).optional(), // Limité à trois styles
+        emoji: z.string(), // Obligatoire pour les boutons
+        style: z.enum(['primary', 'secondary', 'success']).optional(),
       }),
     )
     .max(5) // Limite max pour premium

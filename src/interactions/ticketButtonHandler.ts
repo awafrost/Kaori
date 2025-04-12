@@ -49,11 +49,19 @@ const ticketCreateButton = new Button(
         { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
         {
           id: interaction.user.id,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
         },
         {
           id: interaction.client.user.id,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
         },
       ],
     });
@@ -71,6 +79,11 @@ const ticketCreateButton = new Button(
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`ticket_mention_${interaction.user.id}`)
+        .setLabel('Mentionner le Créateur')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('👤'),
     );
 
     await channel.send({
@@ -177,11 +190,16 @@ const ticketCloseButton = new Button(
         .setCustomId('ticket_transcript')
         .setLabel('Transcription')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true), // Désactiver après fermeture
+        .setDisabled(true),
       new ButtonBuilder()
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`ticket_mention_${ticket.userId}`)
+        .setLabel('Mentionner le Créateur')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('👤'),
     );
 
     await interaction.reply({
@@ -249,6 +267,7 @@ const ticketReopenButton = new Button(
           allow: [
             PermissionFlagsBits.ViewChannel,
             PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
           ],
         },
         {
@@ -256,6 +275,7 @@ const ticketReopenButton = new Button(
           allow: [
             PermissionFlagsBits.ViewChannel,
             PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
           ],
         },
       ],
@@ -274,6 +294,11 @@ const ticketReopenButton = new Button(
         .setCustomId('ticket_delete')
         .setLabel('Supprimer')
         .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`ticket_mention_${ticket.userId}`)
+        .setLabel('Mentionner le Créateur')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('👤'),
     );
 
     await interaction.reply({
@@ -427,10 +452,24 @@ const ticketTranscriptButton = new Button(
   },
 );
 
+const ticketMentionButton = new Button(
+  { customId: /^ticket_mention_[0-9]+$/ },
+  async (interaction) => {
+    if (!interaction.inCachedGuild()) return;
+
+    const creatorId = interaction.customId.split('_')[2];
+    await interaction.reply({
+      content: `<@${creatorId}>`,
+      ephemeral: false,
+    });
+  },
+);
+
 module.exports = [
   ticketCreateButton,
   ticketCloseButton,
   ticketReopenButton,
   ticketDeleteButton,
   ticketTranscriptButton,
+  ticketMentionButton,
 ];
