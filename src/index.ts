@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import dotenv from 'dotenv'; // Import dotenv to load environment variables
+dotenv.config(); // Load the .env file
 
 import path from 'node:path';
 import {
@@ -19,7 +19,6 @@ import {
   version,
 } from 'discord.js';
 import mongoose from 'mongoose';
-import { startTicketInactivityChecker } from '@modules/ticketInactivityChecker';
 
 // Set up the Discord client
 export const client = new Client({
@@ -32,7 +31,12 @@ export const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates,
   ],
-  partials: [Partials.Channel, Partials.GuildMember, Partials.Message, Partials.User],
+  partials: [
+    Partials.Channel,
+    Partials.GuildMember,
+    Partials.Message,
+    Partials.User,
+  ],
   allowedMentions: {
     parse: [AllowedMentionsTypes.Role, AllowedMentionsTypes.User],
   },
@@ -53,7 +57,10 @@ client.once(Events.ClientReady, async () => {
   console.table({
     'Bot User': client.user?.tag,
     Guilds: `${client.guilds.cache.size} Servers`,
-    Watching: `${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} Members`,
+    Watching: `${client.guilds.cache.reduce(
+      (a, b) => a + b.memberCount,
+      0,
+    )} Members`,
     'Discord.js': `v${version}`,
     'Node.js': process.version,
     Platform: `${process.platform} | ${process.arch}`,
@@ -65,26 +72,11 @@ client.once(Events.ClientReady, async () => {
     type: ActivityType.Competing,
   });
 
-  // Clear existing global commands to ensure fresh registration (one-time, can be removed after success)
-  try {
-    await client.application?.commands.set([]);
-    console.log('[INFO] Cleared all global commands to ensure fresh registration.');
-  } catch (error) {
-    console.error('[ERROR] Failed to clear global commands:', error);
-  }
-
-  // Register commands globally
-  try {
-    await interactions.registerCommands({
-      syncWithCommand: true,
-    });
-    console.log('[INFO] Successfully registered global commands.');
-  } catch (error) {
-    console.error('[ERROR] Failed to register global commands:', error);
-  }
-
-  // Start ticket inactivity checker
-  await startTicketInactivityChecker(client);
+  // Register the commands
+  interactions.registerCommands({
+   // guildId: process.env.GUILD_ID ?? undefined,
+    syncWithCommand: true,
+  });
 });
 
 // Interaction handling
@@ -100,26 +92,25 @@ client.on(Events.InteractionCreate, (interaction) => {
         content: '`⌛` The command is on cooldown.',
         ephemeral: true,
       });
-    console.error('[ERROR] Interaction error:', err);
+    console.error(err);
   });
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('[ERROR] Uncaught exception:', err);
+  console.error(err);
 });
 
 // Bot login
 client.login(process.env.DISCORD_TOKEN);
 
 // Connect to MongoDB
-mongoose
-  .connect(process.env.DATABASE_URL ?? '', {
-    dbName: process.env.DATABASE_NAME,
-  })
+mongoose.connect(process.env.DATABASE_URL ?? '', {
+  dbName: process.env.DATABASE_NAME,
+})
   .then(() => {
-    console.log('[INFO] Successfully connected to MongoDB');
+    console.log('Successfully connected to MongoDB');
   })
   .catch((err) => {
-    console.error('[ERROR] Error connecting to MongoDB:', err);
+    console.error('Error connecting to MongoDB:', err);
   });
