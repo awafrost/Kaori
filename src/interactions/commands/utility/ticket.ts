@@ -9,6 +9,7 @@ import {
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
+  StringSelectMenuBuilder,
 } from 'discord.js';
 
 async function resolveEmoji(input: string, guild: any): Promise<string | null> {
@@ -372,34 +373,29 @@ export default new ChatInput(
           return;
         }
 
-        const buttons = config.ticketButtons.map((btn, index) =>
-          new ButtonBuilder()
-            .setCustomId(`remove_button_${index}`)
-            .setLabel(
-              btn.embedDescription
-                ? btn.embedDescription.slice(0, 80)
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('remove_ticket_button')
+          .setPlaceholder('Sélectionnez un bouton à supprimer')
+          .setOptions(
+            config.ticketButtons.map((btn, index) => ({
+              label: btn.embedDescription
+                ? btn.embedDescription.slice(0, 100)
                 : `Bouton ${index + 1}`,
-            )
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji(btn.emoji),
-        );
-
-        const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-        for (let i = 0; i < buttons.length; i += 5) {
-          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            buttons.slice(i, i + 5),
+              value: index.toString(),
+              emoji: btn.emoji,
+            })),
           );
-          rows.push(row);
-        }
+
+        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
               .setTitle('Supprimer un Bouton')
-              .setDescription('Cliquez sur un bouton pour le supprimer.')
+              .setDescription('Sélectionnez un bouton à supprimer dans le menu ci-dessous.')
               .setColor(Colors.Blurple),
           ],
-          components: rows,
+          components: [row],
           ephemeral: true,
         });
       }
@@ -431,7 +427,9 @@ export default new ChatInput(
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription('`❌` Emoji invalide. Utilisez un emoji Unicode, un nom (:nom:), ou un ID.')
+                .setDescription(
+                  '`❌` Emoji invalide. Utilisez un emoji Unicode (📩), un nom (:nom:), ou un ID. Assurez-vous que l’emoji existe dans ce serveur.',
+                )
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
@@ -489,7 +487,11 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setDescription(`\`✅\` Bouton ajouté avec l'emoji : <:${emoji}:${emoji}>`)
+              .setDescription(
+                `\`✅\` Bouton ajouté avec l'emoji : ${
+                  emoji.match(/^\d+$/) ? `<:${emoji}:${emoji}>` : emoji
+                }`,
+              )
               .setColor(Colors.Green),
           ],
           ephemeral: true,

@@ -7,8 +7,12 @@ import {
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
+  Client,
+  Interaction,
+  StringSelectMenuInteraction,
 } from 'discord.js';
 
+// Gestionnaires de boutons
 const ticketCreateButton = new Button(
   { customId: /^ticket_create_[0-4]_[0-9]+$/ },
   async (interaction) => {
@@ -356,38 +360,49 @@ const ticketMentionButton = new Button(
   },
 );
 
-const ticketRemoveButton = new Button(
-  { customId: /^remove_button_[0-4]$/ },
-  async (interaction) => {
+// Gestionnaire pour le menu déroulant (StringSelectMenu)
+const setupStringSelectMenuHandler = (client: Client) => {
+  client.on('interactionCreate', async (interaction: Interaction) => {
+    if (!interaction.isStringSelectMenu()) return;
     if (!interaction.inCachedGuild()) return;
 
-    const index = parseInt(interaction.customId.split('_')[2]);
-    const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-    if (!config || index >= config.ticketButtons.length) {
-      await interaction.update({
+    const selectInteraction = interaction as StringSelectMenuInteraction;
+
+    if (selectInteraction.customId === 'remove_ticket_button') {
+      const index = parseInt(selectInteraction.values[0]);
+      const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+      if (!config || index >= config.ticketButtons.length) {
+        await selectInteraction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription('`❌` Bouton non trouvé.')
+              .setColor(Colors.Red),
+          ],
+          components: [],
+        });
+        return;
+      }
+
+      const removedButton = config.ticketButtons.splice(index, 1)[0];
+      await config.save();
+
+      await selectInteraction.update({
         embeds: [
           new EmbedBuilder()
-            .setDescription('`❌` Bouton non trouvé.')
-            .setColor(Colors.Red),
+            .setDescription(
+              `\`✅\` Bouton supprimé : ${
+                removedButton.emoji.match(/^\d+$/)
+                  ? `<:${removedButton.emoji}:${removedButton.emoji}>`
+                  : removedButton.emoji
+              }`,
+            )
+            .setColor(Colors.Green),
         ],
         components: [],
       });
-      return;
     }
-
-    const removedButton = config.ticketButtons.splice(index, 1)[0];
-    await config.save();
-
-    await interaction.update({
-      embeds: [
-        new EmbedBuilder()
-          .setDescription(`\`✅\` Bouton supprimé : ${removedButton.emoji}`)
-          .setColor(Colors.Green),
-      ],
-      components: [],
-    });
-  },
-);
+  });
+};
 
 module.exports = [
   ticketCreateButton,
@@ -395,5 +410,5 @@ module.exports = [
   ticketReopenButton,
   ticketDeleteButton,
   ticketMentionButton,
-  ticketRemoveButton,
+  setupStringSelectMenuHandler,
 ];
