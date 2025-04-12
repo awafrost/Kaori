@@ -223,285 +223,337 @@ export default new ChatInput(
           return;
         }
 
-        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config) {
-          config = new TicketConfig({
-            guildId: interaction.guild.id,
-            ticketChannelId: channel.id,
-            ticketCategoryId: category.id,
-            ticketButtons: [],
-            embedTitle: embedTitle || 'Ouvrir un Ticket',
-            embedDescription:
-              embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
-            embedColor: embedColor || '#131416',
-            embedImage: embedImage || undefined,
+        try {
+          let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+          if (!config) {
+            config = new TicketConfig({
+              guildId: interaction.guild.id,
+              ticketChannelId: channel.id,
+              ticketCategoryId: category.id,
+              ticketButtons: [],
+              embedTitle: embedTitle || 'Ouvrir un Ticket',
+              embedDescription:
+                embedDescription || 'Cliquez sur un bouton pour créer un ticket.',
+              embedColor: embedColor || '#131416',
+              embedImage: embedImage || undefined,
+            });
+          } else {
+            config.ticketChannelId = channel.id;
+            config.ticketCategoryId = category.id;
+            config.embedTitle = embedTitle || config.embedTitle || 'Ouvrir un Ticket';
+            config.embedDescription =
+              embedDescription ||
+              config.embedDescription ||
+              'Cliquez sur un bouton pour créer un ticket.';
+            config.embedColor = embedColor || config.embedColor || '#131416';
+            config.embedImage = embedImage || config.embedImage || undefined;
+          }
+
+          await config.save();
+
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(
+                  `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}` +
+                  (embedImage ? `\n- Image : ${embedImage}` : ''),
+                )
+                .setColor(Colors.Green),
+            ],
+            ephemeral: true,
           });
-        } else {
-          config.ticketChannelId = channel.id;
-          config.ticketCategoryId = category.id;
-          config.embedTitle = embedTitle || config.embedTitle || 'Ouvrir un Ticket';
-          config.embedDescription =
-            embedDescription ||
-            config.embedDescription ||
-            'Cliquez sur un bouton pour créer un ticket.';
-          config.embedColor = embedColor || config.embedColor || '#131416';
-          config.embedImage = embedImage || config.embedImage || undefined;
+          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+        } catch (error) {
+          console.error('[ERROR] Failed to save TicketConfig in setup:', error);
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Erreur lors de la sauvegarde de la configuration.')
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
         }
-
-        await config.save();
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                `\`✅\` Configuration des tickets mise à jour :\n- Salon : <#${channel.id}>\n- Catégorie : ${category.name}` +
-                (embedImage ? `\n- Image : ${embedImage}` : ''),
-              )
-              .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
 
       // Sous-commande : send
       else if (subcommand === 'send') {
-        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config?.ticketChannelId || !config.ticketButtons.length) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Configurez d\'abord le salon et ajoutez au moins un bouton.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const channel = await interaction.client.channels.fetch(
-          config.ticketChannelId,
-        );
-        if (!channel?.isTextBased()) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Le salon configuré n\'est pas textuel.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const styleMap: Record<string, ButtonStyle> = {
-          primary: ButtonStyle.Primary,
-          secondary: ButtonStyle.Secondary,
-          success: ButtonStyle.Success,
-        };
-
-        const buttons = [];
-        for (const btn of config.ticketButtons) {
-          const emojiId = await resolveEmoji(btn.emoji, interaction.guild);
-          if (!emojiId) {
-            console.warn(`Emoji invalide pour le bouton ${btn.customId}: ${btn.emoji}`);
-            continue;
+        try {
+          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+          if (!config?.ticketChannelId || !config.ticketButtons.length) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    '`❌` Configurez d\'abord le salon et ajoutez au moins un bouton.',
+                  )
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
           }
 
-          const button = new ButtonBuilder()
-            .setCustomId(btn.customId)
-            .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary)
-            .setEmoji(emojiId);
-          buttons.push(button);
-        }
+          const channel = await interaction.client.channels.fetch(
+            config.ticketChannelId,
+          );
+          if (!channel?.isTextBased()) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription('`❌` Le salon configuré n\'est pas textuel.')
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
 
-        if (!buttons.length) {
+          const styleMap: Record<string, ButtonStyle> = {
+            primary: ButtonStyle.Primary,
+            secondary: ButtonStyle.Secondary,
+            success: ButtonStyle.Success,
+          };
+
+          const buttons = [];
+          for (const btn of config.ticketButtons) {
+            if (!btn.emoji) {
+              console.warn(`[WARN] Skipping button ${btn.customId}: missing emoji`);
+              continue;
+            }
+            const emojiId = await resolveEmoji(btn.emoji, interaction.guild);
+            if (!emojiId) {
+              console.warn(`[WARN] Skipping button ${btn.customId}: invalid emoji ${btn.emoji}`);
+              continue;
+            }
+
+            const button = new ButtonBuilder()
+              .setCustomId(btn.customId)
+              .setStyle(btn.style ? styleMap[btn.style] : ButtonStyle.Primary)
+              .setEmoji(emojiId);
+            buttons.push(button);
+          }
+
+          if (!buttons.length) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription('`❌` Aucun bouton valide trouvé.')
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+
+          const embed = new EmbedBuilder()
+            .setTitle(config.embedTitle ?? null)
+            .setDescription(config.embedDescription ?? null)
+            .setColor((config.embedColor as any) || Colors.Blurple);
+
+          if (config.embedImage) {
+            embed.setImage(config.embedImage);
+          }
+
+          await channel.send({
+            embeds: [embed],
+            components: [row],
+          });
+
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription('`❌` Aucun bouton valide trouvé.')
+                .setDescription('`✅` Embed des tickets envoyé dans le salon configuré.')
+                .setColor(Colors.Green),
+            ],
+            ephemeral: true,
+          });
+          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+        } catch (error) {
+          console.error('[ERROR] Failed to process send command:', error);
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Erreur lors de l\'envoi de l\'embed des tickets.')
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
           });
-          return;
         }
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-
-        const embed = new EmbedBuilder()
-          .setTitle(config.embedTitle ?? null)
-          .setDescription(config.embedDescription ?? null)
-          .setColor((config.embedColor as any) || Colors.Blurple);
-
-        if (config.embedImage) {
-          embed.setImage(config.embedImage);
-        }
-
-        await channel.send({
-          embeds: [embed],
-          components: [row],
-        });
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription('`✅` Embed des tickets envoyé dans le salon configuré.')
-              .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
 
       // Sous-commande : status
       else if (subcommand === 'status') {
-        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config) {
+        try {
+          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+          if (!config) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription('`❌` Aucune configuration trouvée. Utilisez `/ticket config setup` pour commencer.')
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const buttons = config.ticketButtons.length
+            ? config.ticketButtons
+                .map((btn, index) =>
+                  btn.emoji
+                    ? `${index + 1}. ${
+                        btn.emoji.match(/^\d+$/)
+                          ? `<:${btn.emoji}:${btn.emoji}>`
+                          : btn.emoji
+                      } (${btn.style || 'primary'})`
+                    : `${index + 1}. Bouton invalide (emoji manquant)`,
+                )
+                .join('\n')
+            : 'Aucun bouton configuré.';
+
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription('`❌` Aucune configuration trouvée. Utilisez `/ticket config setup` pour commencer.')
+                .setTitle('Configuration des Tickets')
+                .setDescription(
+                  `**Salon** : ${
+                    config.ticketChannelId
+                      ? `<#${config.ticketChannelId}>`
+                      : 'Non défini'
+                  }\n` +
+                    `**Catégorie** : ${
+                      config.ticketCategoryId
+                        ? `<#${config.ticketCategoryId}>`
+                        : 'Non défini'
+                    }\n` +
+                    `**Titre de l'embed** : ${
+                      config.embedTitle || 'Ouvrir un Ticket'
+                    }\n` +
+                    `**Description de l'embed** : ${
+                      config.embedDescription ||
+                      'Cliquez sur un bouton pour créer un ticket.'
+                    }\n` +
+                    `**Couleur de l'embed** : ${config.embedColor || '#131416'}\n` +
+                    (config.embedImage
+                      ? `**Image de l'embed** : ${config.embedImage}\n`
+                      : '') +
+                    `**Boutons** :\n${buttons}`,
+                )
+                .setColor(Colors.Blurple),
+            ],
+            ephemeral: true,
+          });
+          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+        } catch (error) {
+          console.error('[ERROR] Failed to process status command:', error);
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Erreur lors de la récupération de la configuration.')
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
           });
-          return;
         }
-
-        const buttons = config.ticketButtons.length
-          ? config.ticketButtons
-              .map((btn, index) =>
-                btn.emoji
-                  ? `${index + 1}. ${
-                      btn.emoji.match(/^\d+$/)
-                        ? `<:${btn.emoji}:${btn.emoji}>`
-                        : btn.emoji
-                    } (${btn.style || 'primary'})`
-                  : `${index + 1}. Bouton invalide (emoji manquant)`,
-              )
-              .join('\n')
-          : 'Aucun bouton configuré.';
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle('Configuration des Tickets')
-              .setDescription(
-                `**Salon** : ${
-                  config.ticketChannelId
-                    ? `<#${config.ticketChannelId}>`
-                    : 'Non défini'
-                }\n` +
-                  `**Catégorie** : ${
-                    config.ticketCategoryId
-                      ? `<#${config.ticketCategoryId}>`
-                      : 'Non défini'
-                  }\n` +
-                  `**Titre de l'embed** : ${
-                    config.embedTitle || 'Ouvrir un Ticket'
-                  }\n` +
-                  `**Description de l'embed** : ${
-                    config.embedDescription ||
-                    'Cliquez sur un bouton pour créer un ticket.'
-                  }\n` +
-                  `**Couleur de l'embed** : ${config.embedColor || '#131416'}\n` +
-                  (config.embedImage
-                    ? `**Image de l'embed** : ${config.embedImage}\n`
-                    : '') +
-                  `**Boutons** :\n${buttons}`,
-              )
-              .setColor(Colors.Blurple),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
 
       // Sous-commande : remove
       else if (subcommand === 'remove') {
-        const buttonIndex = interaction.options.getInteger('button_index', true);
-        const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config || !config.ticketButtons.length) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription('`❌` Aucun bouton configuré à supprimer.')
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
+        try {
+          const buttonIndex = interaction.options.getInteger('button_index', true);
+          const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+          if (!config || !config.ticketButtons.length) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription('`❌` Aucun bouton configuré à supprimer.')
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
 
-        const buttonsList = config.ticketButtons.length
-          ? config.ticketButtons
-              .map((btn, index) =>
-                btn.emoji
-                  ? `${index + 1}. ${
-                      btn.emoji.match(/^\d+$/)
-                        ? `<:${btn.emoji}:${btn.emoji}>`
-                        : btn.emoji
-                    } (${btn.style || 'primary'})`
-                  : `${index + 1}. Bouton invalide (emoji manquant)`,
-              )
-              .join('\n')
-          : 'Aucun bouton configuré.';
-
-        // Convert 1-based index to 0-based
-        const index = buttonIndex - 1;
-        if (index < 0 || index >= config.ticketButtons.length) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setTitle('Erreur de Suppression')
-                .setDescription(
-                  `\`❌\` Index invalide. Choisissez un numéro entre 1 et ${config.ticketButtons.length}.\n\n**Boutons disponibles** :\n${buttonsList}`,
+          const buttonsList = config.ticketButtons.length
+            ? config.ticketButtons
+                .map((btn, index) =>
+                  btn.emoji
+                    ? `${index + 1}. ${
+                        btn.emoji.match(/^\d+$/)
+                          ? `<:${btn.emoji}:${btn.emoji}>`
+                          : btn.emoji
+                      } (${btn.style || 'primary'})`
+                    : `${index + 1}. Bouton invalide (emoji manquant)`,
                 )
+                .join('\n')
+            : 'Aucun bouton configuré.';
+
+          // Convert 1-based index to 0-based
+          const index = buttonIndex - 1;
+          if (index < 0 || index >= config.ticketButtons.length) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle('Erreur de Suppression')
+                  .setDescription(
+                    `\`❌\` Index invalide. Choisissez un numéro entre 1 et ${config.ticketButtons.length}.\n\n**Boutons disponibles** :\n${buttonsList}`,
+                  )
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const removedButton = config.ticketButtons.splice(index, 1)[0];
+          await config.save();
+
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Bouton Supprimé')
+                .setDescription(
+                  `\`✅\` Bouton supprimé : ${
+                    removedButton.emoji
+                      ? removedButton.emoji.match(/^\d+$/)
+                        ? `<:${removedButton.emoji}:${removedButton.emoji}>`
+                        : removedButton.emoji
+                      : '(emoji manquant)'
+                  }\n\n**Boutons restants** :\n${
+                    config.ticketButtons.length
+                      ? config.ticketButtons
+                          .map((btn, i) =>
+                            btn.emoji
+                              ? `${i + 1}. ${
+                                  btn.emoji.match(/^\d+$/)
+                                    ? `<:${btn.emoji}:${btn.emoji}>`
+                                    : btn.emoji
+                                } (${btn.style || 'primary'})`
+                              : `${i + 1}. Bouton invalide (emoji manquant)`,
+                          )
+                          .join('\n')
+                      : 'Aucun bouton configuré.'
+                  }`,
+                )
+                .setColor(Colors.Green),
+            ],
+            ephemeral: true,
+          });
+          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+        } catch (error) {
+          console.error('[ERROR] Failed to process remove command:', error);
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription('`❌` Erreur lors de la suppression du bouton.')
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
           });
-          return;
         }
-
-        const removedButton = config.ticketButtons.splice(index, 1)[0];
-        await config.save();
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle('Bouton Supprimé')
-              .setDescription(
-                `\`✅\` Bouton supprimé : ${
-                  removedButton.emoji
-                    ? removedButton.emoji.match(/^\d+$/)
-                      ? `<:${removedButton.emoji}:${removedButton.emoji}>`
-                      : removedButton.emoji
-                    : '(emoji manquant)'
-                }\n\n**Boutons restants** :\n${
-                  config.ticketButtons.length
-                    ? config.ticketButtons
-                        .map((btn, i) =>
-                          btn.emoji
-                            ? `${i + 1}. ${
-                                btn.emoji.match(/^\d+$/)
-                                  ? `<:${btn.emoji}:${btn.emoji}>`
-                                  : btn.emoji
-                              } (${btn.style || 'primary'})`
-                            : `${i + 1}. Bouton invalide (emoji manquant)`,
-                        )
-                        .join('\n')
-                    : 'Aucun bouton configuré.'
-                }`,
-              )
-              .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
 
@@ -509,89 +561,101 @@ export default new ChatInput(
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        const emojiInput = interaction.options.getString('emoji', true); // Required
-        const description = interaction.options.getString('description', true); // Required
-        const rawStyle = interaction.options.getString('style');
-        const title = interaction.options.getString('title');
+        try {
+          const emojiInput = interaction.options.getString('emoji', true); // Required
+          const description = interaction.options.getString('description', true); // Required
+          const rawStyle = interaction.options.getString('style');
+          const title = interaction.options.getString('title');
 
-        const emoji = await resolveEmoji(emojiInput, interaction.guild);
-        if (!emoji) {
+          const emoji = await resolveEmoji(emojiInput, interaction.guild);
+          if (!emoji) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    '`❌` Emoji invalide. Utilisez un emoji Unicode (📩), un nom (:nom:), ou un ID. Assurez-vous que l’emoji existe dans ce serveur.',
+                  )
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const validStyles = ['primary', 'secondary', 'success'] as const;
+          const style:
+            | 'primary'
+            | 'secondary'
+            | 'success'
+            | undefined = rawStyle && validStyles.includes(rawStyle as any)
+            ? (rawStyle as 'primary' | 'secondary' | 'success')
+            : undefined;
+
+          let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
+          if (!config) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    '`❌` Veuillez d\'abord configurer le système avec `/ticket config setup`.',
+                  )
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const maxButtons = 5;
+          if (config.ticketButtons.length >= maxButtons) {
+            await interaction.reply({
+              embeds: [
+                new EmbedBuilder()
+                  .setDescription(
+                    `\`❌\` Limite de boutons atteinte (${maxButtons}).`,
+                  )
+                  .setColor(Colors.Red),
+              ],
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
+          config.ticketButtons.push({
+            customId,
+            emoji,
+            style,
+            embedTitle: title ?? undefined,
+            embedDescription: description,
+          });
+
+          await config.save();
+
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
                 .setDescription(
-                  '`❌` Emoji invalide. Utilisez un emoji Unicode (📩), un nom (:nom:), ou un ID. Assurez-vous que l’emoji existe dans ce serveur.',
+                  `\`✅\` Bouton ajouté avec l'emoji : ${
+                    emoji.match(/^\d+$/) ? `<:${emoji}:${emoji}>` : emoji
+                  }`,
                 )
-                .setColor(Colors.Red),
+                .setColor(Colors.Green),
             ],
             ephemeral: true,
           });
-          return;
-        }
-
-        const validStyles = ['primary', 'secondary', 'success'] as const;
-        const style:
-          | 'primary'
-          | 'secondary'
-          | 'success'
-          | undefined = rawStyle && validStyles.includes(rawStyle as any)
-          ? (rawStyle as 'primary' | 'secondary' | 'success')
-          : undefined;
-
-        let config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-        if (!config) {
+          setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
+        } catch (error) {
+          console.error('[ERROR] Failed to process button add command:', error);
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setDescription(
-                  '`❌` Veuillez d\'abord configurer le système avec `/ticket config setup`.',
-                )
+                .setDescription('`❌` Erreur lors de l\'ajout du bouton.')
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
           });
-          return;
         }
-
-        const maxButtons = 5;
-        if (config.ticketButtons.length >= maxButtons) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  `\`❌\` Limite de boutons atteinte (${maxButtons}).`,
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const customId = `ticket_create_${config.ticketButtons.length}_${Date.now()}`;
-        config.ticketButtons.push({
-          customId,
-          emoji,
-          style,
-          embedTitle: title ?? undefined,
-          embedDescription: description,
-        });
-
-        await config.save();
-
-        await interaction.reply({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription(
-                `\`✅\` Bouton ajouté avec l'emoji : ${
-                  emoji.match(/^\d+$/) ? `<:${emoji}:${emoji}>` : emoji
-                }`,
-              )
-              .setColor(Colors.Green),
-          ],
-          ephemeral: true,
-        });
-        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
   },
