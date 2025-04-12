@@ -20,7 +20,7 @@ interface PartnershipDocument {
 }
 
 // Liste des IDs autorisés pour la blacklist globale
-const GLOBAL_BLACKLIST_AUTHORIZED_IDS = ['499447456678019072', '1055998924206379099']; // Remplacez par les IDs réels
+const GLOBAL_BLACKLIST_AUTHORIZED_IDS = ['499447456678019072', '1055998924206379099'];
 
 export default new ChatInput(
   {
@@ -110,7 +110,7 @@ export default new ChatInput(
         options: [
           {
             name: 'partner',
-            description: 'Configurer le salon de partenariat et les paramètres',
+            description: 'Configurer le salon de partenariat',
             type: ApplicationCommandOptionType.Subcommand,
           },
           {
@@ -132,7 +132,7 @@ export default new ChatInput(
               },
               {
                 name: 'alertuser',
-                description: "Utilisateur à alerter en cas d'invitation invalide",
+                description: 'Utilisateur à alerter pour les invitations invalides',
                 type: ApplicationCommandOptionType.User,
                 required: true,
               },
@@ -140,13 +140,13 @@ export default new ChatInput(
                 name: 'title',
                 description: "Titre pour l'embed",
                 type: ApplicationCommandOptionType.String,
-                required: true,
+                required: false,
               },
               {
                 name: 'description',
                 description: "Description pour l'embed",
                 type: ApplicationCommandOptionType.String,
-                required: true,
+                required: false,
               },
             ],
           },
@@ -164,7 +164,7 @@ export default new ChatInput(
           },
           {
             name: 'user',
-            description: "Voir les statistiques d'une personne sur ce serveur",
+            description: "Voir les stats d'un utilisateur sur ce serveur",
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
@@ -177,7 +177,7 @@ export default new ChatInput(
           },
           {
             name: 'global',
-            description: "Voir tous les partenariats d'une personne (tous serveurs)",
+            description: "Voir tous les partenariats d'un utilisateur",
             type: ApplicationCommandOptionType.Subcommand,
             options: [
               {
@@ -213,7 +213,7 @@ export default new ChatInput(
             embeds: [
               new EmbedBuilder()
                 .setTitle('Liste des serveurs blacklistés')
-                .setDescription('Aucun serveur n\'est actuellement blacklisté.')
+                .setDescription("Aucun serveur n'est actuellement blacklisté.")
                 .setColor(Colors.DarkGrey),
             ],
             ephemeral: true,
@@ -230,7 +230,9 @@ export default new ChatInput(
             } catch {
               guildName = 'Nom inconnu';
             }
-            return `**Serveur:** ${guildName} (\`${entry.blacklistedServerId}\`)\n**Raison:** ${entry.reason}\n**Global:** ${entry.isGlobal ? 'Oui' : 'Non'}`;
+            return `**Serveur:** ${guildName} (\`${entry.blacklistedServerId}\`)\n**Raison:** ${entry.reason}\n**Global:** ${
+              entry.isGlobal ? 'Oui' : 'Non'
+            }`;
           }),
         );
 
@@ -327,7 +329,7 @@ export default new ChatInput(
             embeds: [
               new EmbedBuilder()
                 .setTitle('Permission refusée')
-                .setDescription('Vous n\'êtes pas autorisé à ajouter une blacklist globale.')
+                .setDescription("Vous n'êtes pas autorisé à ajouter une blacklist globale.")
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
@@ -382,7 +384,7 @@ export default new ChatInput(
             embeds: [
               new EmbedBuilder()
                 .setTitle('Permission refusée')
-                .setDescription('Vous n\'êtes pas autorisé à retirer une blacklist globale.')
+                .setDescription("Vous n'êtes pas autorisé à retirer une blacklist globale.")
                 .setColor(Colors.Red),
             ],
             ephemeral: true,
@@ -426,7 +428,6 @@ export default new ChatInput(
         });
       }
     }
-
     // Group: configure
     else if (subcommandGroup === 'configure') {
       if (subcommand === 'partner') {
@@ -454,9 +455,22 @@ export default new ChatInput(
       } else if (subcommand === 'portal') {
         const categoryId = interaction.options.getString('category', true);
         const threshold = interaction.options.getInteger('threshold', true);
-        const alertUser = interaction.options.getUser('alertuser', true);
-        const title = interaction.options.getString('title', true);
-        const description = interaction.options.getString('description', true);
+        const alertUser = interaction.options.get('alertuser', true);
+        const title = interaction.options.getString('title', false) || 'Default Title';
+        const description = interaction.options.getString('description', false) || 'Default Description';
+
+        if (!alertUser.user) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Erreur')
+                .setDescription("L'utilisateur spécifié pour l'alerte est invalide.")
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
 
         let config = await GuildConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
@@ -464,15 +478,15 @@ export default new ChatInput(
             guildId: interaction.guild.id,
             categoryId,
             memberThreshold: threshold,
-            alertUserIds: [alertUser.id],
+            alertUserIds: [alertUser.user.id],
             embedConfig: { title, description, image: null, thumbnail: null, mentionRoleId: null },
           });
         } else {
           config.categoryId = categoryId;
           config.memberThreshold = threshold;
           config.alertUserIds = config.alertUserIds || [];
-          if (!config.alertUserIds.includes(alertUser.id)) {
-            config.alertUserIds.push(alertUser.id);
+          if (!config.alertUserIds.includes(alertUser.user.id)) {
+            config.alertUserIds.push(alertUser.user.id);
           }
           config.embedConfig = config.embedConfig || {
             title: null,
@@ -495,9 +509,9 @@ export default new ChatInput(
               .addFields(
                 { name: 'Catégorie', value: categoryId, inline: true },
                 { name: 'Seuil de Membres', value: threshold.toString(), inline: true },
-                { name: 'Utilisateur Alerté', value: alertUser.tag, inline: true },
-                { name: 'Titre de l\'Embed', value: title, inline: true },
-                { name: 'Description de l\'Embed', value: description, inline: true },
+                { name: 'Utilisateur Alerté', value: alertUser.user.tag, inline: true },
+                { name: "Titre de l'Embed", value: title, inline: true },
+                { name: "Description de l'Embed", value: description, inline: true },
               )
               .setColor(Colors.Green),
           ],
@@ -505,7 +519,6 @@ export default new ChatInput(
         });
       }
     }
-
     // Group: stats
     else if (subcommandGroup === 'stats') {
       if (subcommand === 'leaderboard') {
@@ -521,7 +534,7 @@ export default new ChatInput(
             embeds: [
               new EmbedBuilder()
                 .setTitle('Classement des partenariats')
-                .setDescription('Aucun partenariat n\'a été enregistré sur ce serveur.')
+                .setDescription("Aucun partenariat n'a été enregistré sur ce serveur.")
                 .setColor(Colors.DarkGrey),
             ],
             ephemeral: true,
@@ -546,18 +559,32 @@ export default new ChatInput(
           ephemeral: true,
         });
       } else if (subcommand === 'user') {
-        const user = interaction.options.getUser('user', true);
+        const user = interaction.options.get('user', true);
+
+        if (!user.user) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Erreur')
+                .setDescription("L'utilisateur spécifié est invalide.")
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
         const partnerships = await Partnership.find({
           guildId: interaction.guild.id,
-          userId: user.id,
+          userId: user.user.id,
         });
 
         if (partnerships.length === 0) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setTitle(`Statistiques de ${user.tag}`)
-                .setDescription(`${user.tag} n'a effectué aucun partenariat sur ce serveur.`)
+                .setTitle(`Statistiques de ${user.user.tag}`)
+                .setDescription(`${user.user.tag} n'a effectué aucun partenariat sur ce serveur.`)
                 .setColor(Colors.DarkGrey),
             ],
             ephemeral: true,
@@ -575,24 +602,40 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setTitle(`Statistiques de ${user.tag}`)
+              .setTitle(`Statistiques de ${user.user.tag}`)
               .setDescription(
-                `${user.tag} a effectué **${partnerships.length}** partenariats sur ce serveur.\n\n**Serveurs partenaires :**\n${partnerGuilds.join('\n')}`,
+                `${user.user.tag} a effectué **${partnerships.length}** partenariats sur ce serveur.\n\n**Serveurs partenaires :**\n${partnerGuilds.join(
+                  '\n',
+                )}`,
               )
               .setColor(Colors.Green),
           ],
           ephemeral: true,
         });
       } else if (subcommand === 'global') {
-        const user = interaction.options.getUser('user', true);
-        const partnerships = await Partnership.find({ userId: user.id });
+        const user = interaction.options.get('user', true);
+
+        if (!user.user) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Erreur')
+                .setDescription("L'utilisateur spécifié est invalide.")
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const partnerships = await Partnership.find({ userId: user.user.id });
 
         if (partnerships.length === 0) {
           await interaction.reply({
             embeds: [
               new EmbedBuilder()
-                .setTitle(`Partenariats globaux de ${user.tag}`)
-                .setDescription(`${user.tag} n'a effectué aucun partenariat.`)
+                .setTitle(`Partenariats globaux de ${user.user.tag}`)
+                .setDescription(`${user.user.tag} n'a effectué aucun partenariat.`)
                 .setColor(Colors.DarkGrey),
             ],
             ephemeral: true,
@@ -611,9 +654,9 @@ export default new ChatInput(
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setTitle(`Partenariats globaux de ${user.tag}`)
+              .setTitle(`Partenariats globaux de ${user.user.tag}`)
               .setDescription(
-                `${user.tag} a effectué **${partnerships.length}** partenariats au total.\n\n${guildStats.join('\n\n')}`,
+                `${user.user.tag} a effectué **${partnerships.length}** partenariats au total.\n\n${guildStats.join('\n\n')}`,
               )
               .setColor(Colors.Green),
           ],
