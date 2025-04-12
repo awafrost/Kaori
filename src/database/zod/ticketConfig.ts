@@ -9,7 +9,6 @@ export const TicketConfig = z.object({
     .array(
       z.object({
         label: z.string(),
-        emoji: z.string().nullable().optional(),
         customId: z.string(),
         embedTitle: z.string().nullable().optional(),
         embedDescription: z.string().nullable().optional(),
