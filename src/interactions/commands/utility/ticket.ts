@@ -9,10 +9,6 @@ import {
   Colors,
   EmbedBuilder,
   PermissionFlagsBits,
-  StringSelectMenuBuilder,
-  Client,
-  Interaction,
-  StringSelectMenuInteraction,
 } from 'discord.js';
 
 async function resolveEmoji(input: string, guild: any): Promise<string | null> {
@@ -43,9 +39,6 @@ async function resolveEmoji(input: string, guild: any): Promise<string | null> {
 
   return null;
 }
-
-// Export the client for use in buttonHandlers.ts
-export let clientInstance: Client;
 
 export default new ChatInput(
   {
@@ -116,6 +109,16 @@ export default new ChatInput(
             name: 'remove',
             description: 'Supprimer un bouton de ticket configuré',
             type: ApplicationCommandOptionType.Subcommand,
+            options: [
+              {
+                name: 'button_index',
+                description: 'Index du bouton à supprimer (1 à 5, voir la liste ci-dessous)',
+                type: ApplicationCommandOptionType.Integer,
+                required: true,
+                min_value: 1,
+                max_value: 5,
+              },
+            ],
           },
         ],
       },
@@ -370,14 +373,14 @@ export default new ChatInput(
 
         const buttons = config.ticketButtons.length
           ? config.ticketButtons
-              .map((btn) =>
+              .map((btn, index) =>
                 btn.emoji
-                  ? `- ${
+                  ? `${index + 1}. ${
                       btn.emoji.match(/^\d+$/)
                         ? `<:${btn.emoji}:${btn.emoji}>`
                         : btn.emoji
                     } (${btn.style || 'primary'})`
-                  : '- Bouton invalide (emoji manquant)',
+                  : `${index + 1}. Bouton invalide (emoji manquant)`,
               )
               .join('\n')
           : 'Aucun bouton configuré.';
@@ -419,6 +422,7 @@ export default new ChatInput(
 
       // Sous-commande : remove
       else if (subcommand === 'remove') {
+        const buttonIndex = interaction.options.getInteger('button_index', true);
         const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
         if (!config || !config.ticketButtons.length) {
           await interaction.reply({
@@ -432,35 +436,72 @@ export default new ChatInput(
           return;
         }
 
-        const selectMenu = new StringSelectMenuBuilder()
-          .setCustomId('remove_ticket_button')
-          .setPlaceholder('Sélectionnez un bouton à supprimer')
-          .setOptions(
-            config.ticketButtons.map((btn, index) => ({
-              label: btn.embedDescription
-                ? btn.embedDescription.slice(0, 100)
-                : `Bouton ${index + 1}`,
-              value: index.toString(),
-              emoji: btn.emoji && btn.emoji.match(/^\d+$/) ? { id: btn.emoji } : btn.emoji || '❓',
-            })),
-          );
+        const buttonsList = config.ticketButtons.length
+          ? config.ticketButtons
+              .map((btn, index) =>
+                btn.emoji
+                  ? `${index + 1}. ${
+                      btn.emoji.match(/^\d+$/)
+                        ? `<:${btn.emoji}:${btn.emoji}>`
+                        : btn.emoji
+                    } (${btn.style || 'primary'})`
+                  : `${index + 1}. Bouton invalide (emoji manquant)`,
+              )
+              .join('\n')
+          : 'Aucun bouton configuré.';
 
-        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          selectMenu,
-        );
+        // Convert 1-based index to 0-based
+        const index = buttonIndex - 1;
+        if (index < 0 || index >= config.ticketButtons.length) {
+          await interaction.reply({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('Erreur de Suppression')
+                .setDescription(
+                  `\`❌\` Index invalide. Choisissez un numéro entre 1 et ${config.ticketButtons.length}.\n\n**Boutons disponibles** :\n${buttonsList}`,
+                )
+                .setColor(Colors.Red),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const removedButton = config.ticketButtons.splice(index, 1)[0];
+        await config.save();
 
         await interaction.reply({
           embeds: [
             new EmbedBuilder()
-              .setTitle('Supprimer un Bouton')
+              .setTitle('Bouton Supprimé')
               .setDescription(
-                'Sélectionnez un bouton à supprimer dans le menu ci-dessous.',
+                `\`✅\` Bouton supprimé : ${
+                  removedButton.emoji
+                    ? removedButton.emoji.match(/^\d+$/)
+                      ? `<:${removedButton.emoji}:${removedButton.emoji}>`
+                      : removedButton.emoji
+                    : '(emoji manquant)'
+                }\n\n**Boutons restants** :\n${
+                  config.ticketButtons.length
+                    ? config.ticketButtons
+                        .map((btn, i) =>
+                          btn.emoji
+                            ? `${i + 1}. ${
+                                btn.emoji.match(/^\d+$/)
+                                  ? `<:${btn.emoji}:${btn.emoji}>`
+                                  : btn.emoji
+                              } (${btn.style || 'primary'})`
+                            : `${i + 1}. Bouton invalide (emoji manquant)`,
+                        )
+                        .join('\n')
+                    : 'Aucun bouton configuré.'
+                }`,
               )
-              .setColor(Colors.Blurple),
+              .setColor(Colors.Green),
           ],
-          components: [row],
           ephemeral: true,
         });
+        setTimeout(() => interaction.deleteReply().catch(() => {}), 3000);
       }
     }
 
@@ -555,48 +596,3 @@ export default new ChatInput(
     }
   },
 );
-
-// Setup select menu handler
-export function setupSelectMenuHandler(client: Client) {
-  clientInstance = client; // Store client instance
-  client.on('interactionCreate', async (interaction: Interaction) => {
-    if (!interaction.isStringSelectMenu()) return;
-    if (!interaction.inCachedGuild()) return;
-
-    const selectInteraction = interaction as StringSelectMenuInteraction;
-
-    if (selectInteraction.customId === 'remove_ticket_button') {
-      const index = parseInt(selectInteraction.values[0]);
-      const config = await TicketConfig.findOne({ guildId: interaction.guild.id });
-      if (!config || index >= config.ticketButtons.length) {
-        await selectInteraction.update({
-          embeds: [
-            new EmbedBuilder()
-              .setDescription('`❌` Bouton non trouvé.')
-              .setColor(Colors.Red),
-          ],
-          components: [],
-        });
-        return;
-      }
-
-      const removedButton = config.ticketButtons.splice(index, 1)[0];
-      await config.save();
-
-      await selectInteraction.update({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(
-              `\`✅\` Bouton supprimé : ${
-                removedButton.emoji.match(/^\d+$/)
-                  ? `<:${removedButton.emoji}:${removedButton.emoji}>`
-                  : removedButton.emoji
-              }`,
-            )
-            .setColor(Colors.Green),
-        ],
-        components: [],
-      });
-    }
-  });
-}
