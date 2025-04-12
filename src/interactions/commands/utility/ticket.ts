@@ -93,7 +93,7 @@ export default new ChatInput(
                 name: 'description',
                 description: "Description de l'embed du ticket",
                 type: ApplicationCommandOptionType.String,
-                required: true,
+                required: false,
               },
               {
                 name: 'style',
