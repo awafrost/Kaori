@@ -370,7 +370,15 @@ export default new ChatInput(
 
         const buttons = config.ticketButtons.length
           ? config.ticketButtons
-              .map((btn) => `- ${btn.emoji} (${btn.style || 'primary'})`)
+              .map((btn) =>
+                btn.emoji
+                  ? `- ${
+                      btn.emoji.match(/^\d+$/)
+                        ? `<:${btn.emoji}:${btn.emoji}>`
+                        : btn.emoji
+                    } (${btn.style || 'primary'})`
+                  : '- Bouton invalide (emoji manquant)',
+              )
               .join('\n')
           : 'Aucun bouton configuré.';
 
@@ -433,7 +441,7 @@ export default new ChatInput(
                 ? btn.embedDescription.slice(0, 100)
                 : `Bouton ${index + 1}`,
               value: index.toString(),
-              emoji: btn.emoji.match(/^\d+$/) ? { id: btn.emoji } : btn.emoji,
+              emoji: btn.emoji && btn.emoji.match(/^\d+$/) ? { id: btn.emoji } : btn.emoji || '❓',
             })),
           );
 
@@ -460,24 +468,10 @@ export default new ChatInput(
     else if (subcommandGroup === 'button') {
       // Sous-commande : add
       if (subcommand === 'add') {
-        const emojiInput = interaction.options.getString('emoji');
-        const description = interaction.options.getString('description');
+        const emojiInput = interaction.options.getString('emoji', true); // Required
+        const description = interaction.options.getString('description', true); // Required
         const rawStyle = interaction.options.getString('style');
         const title = interaction.options.getString('title');
-
-        if (!emojiInput || !description) {
-          await interaction.reply({
-            embeds: [
-              new EmbedBuilder()
-                .setDescription(
-                  '`❌` Les options `emoji` et `description` sont requises.',
-                )
-                .setColor(Colors.Red),
-            ],
-            ephemeral: true,
-          });
-          return;
-        }
 
         const emoji = await resolveEmoji(emojiInput, interaction.guild);
         if (!emoji) {
@@ -538,7 +532,7 @@ export default new ChatInput(
           customId,
           emoji,
           style,
-          embedTitle: title ?? undefined, // Convert null to undefined
+          embedTitle: title ?? undefined,
           embedDescription: description,
         });
 
