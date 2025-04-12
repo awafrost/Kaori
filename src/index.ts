@@ -77,7 +77,7 @@ client.once(Events.ClientReady, async () => {
     const commands = await client.application?.commands.fetch();
     const ticketCommand = commands?.find(c => c.name === 'ticket');
     if (ticketCommand) {
-      console.log('[INFO] Found /ticket command:', JSON.stringify(ticketCommand.options, null, 2));
+      console.log('[INFO] Found /ticket command:');
     } else {
       console.warn('[WARN] /ticket command not found in registered commands.');
     }
